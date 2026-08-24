@@ -16,14 +16,14 @@ export function ScanHistory() {
   function relaunch(scan: ScanSummary) {
     // Relaunch must still pass the authorization gate — prefill /new and let the
     // user re-confirm rather than silently re-submitting.
-    navigate("/new", { state: { target: scan.target, scope: scan.scope, modules: scan.modules } });
+    navigate("/", { state: { target: scan.target, scope: scan.scope } });
   }
 
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-violetx-ink">Scan history</h1>
-        <Link to="/new" className="btn-primary">
+        <Link to="/" className="btn-primary">
           + New scan
         </Link>
       </div>

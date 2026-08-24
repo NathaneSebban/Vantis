@@ -65,7 +65,14 @@ export interface ScanCreate {
   target: string;
   scope: string[];
   modules: ModuleCategory[];
+  module_names?: string[];
   authorized: boolean;
+}
+
+export interface ModuleInfo {
+  name: string;
+  category: ModuleCategory;
+  description: string;
 }
 
 export interface ScanCreatedResponse {

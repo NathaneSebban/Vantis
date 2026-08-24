@@ -7,6 +7,14 @@ import type { ScanCreate, ScanStatus, Severity } from "../api/types";
 
 const ACTIVE: ScanStatus[] = ["queued", "running"];
 
+export function useModules() {
+  return useQuery({
+    queryKey: ["modules"],
+    queryFn: () => api.listModules(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useScanList(limit = 20, offset = 0) {
   return useQuery({
     queryKey: ["scans", limit, offset],

@@ -7,6 +7,7 @@
 
 import type {
   Finding,
+  ModuleInfo,
   ScanCreate,
   ScanCreatedResponse,
   ScanDetail,
@@ -56,6 +57,10 @@ export const api = {
 
   listScans(limit = 20, offset = 0): Promise<ScanListResponse> {
     return request(`/api/scans?limit=${limit}&offset=${offset}`);
+  },
+
+  listModules(): Promise<ModuleInfo[]> {
+    return request("/api/modules");
   },
 
   getScan(id: string): Promise<ScanDetail> {

@@ -43,11 +43,36 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        reveal: {
+          "0%": { opacity: "0", transform: "translateY(14px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        gradient: {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+        radar: {
+          "0%": { transform: "scale(0.6)", opacity: "0.6" },
+          "100%": { transform: "scale(2.2)", opacity: "0" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        sweep: {
+          "0%": { transform: "translateX(-120%)" },
+          "100%": { transform: "translateX(120%)" },
+        },
       },
       animation: {
         drift: "drift 28s ease-in-out infinite",
         pulseglow: "pulseglow 3s ease-in-out infinite",
         shimmer: "shimmer 2.2s linear infinite",
+        reveal: "reveal 0.7s cubic-bezier(0.22,1,0.36,1) both",
+        gradient: "gradient 6s ease infinite",
+        radar: "radar 3s ease-out infinite",
+        float: "float 6s ease-in-out infinite",
+        sweep: "sweep 3.5s ease-in-out infinite",
       },
     },
   },
