@@ -60,12 +60,27 @@ class SqliCheckModule(ScanModule):
         findings: list[Finding] = []
 
         for param in params_to_test[:15]:
-            # -- Error-based check --
+            # Benign baseline, requested twice: (1) confirms which error strings
+            # are ALREADY on the page regardless of injection, and (2) measures
+            # the page's natural response-length noise (dynamic content: ads,
+            # tokens, timestamps) so we don't mistake that noise for injection.
+            benign_url = self._url_with_param(base_url, param, "1")
+            base1 = client.get(benign_url)
+            base2 = client.get(benign_url)
+            if not (base1 and base2 and base1.status_code == 200 and base2.status_code == 200):
+                continue
+            base1_text, base2_text = base1.text or "", base2.text or ""
+            noise = abs(len(base1_text) - len(base2_text))
+            baseline_len = max(len(base1_text), len(base2_text))
+
+            # -- Error-based check (only NEW errors count) --
             probe_url = self._url_with_param(base_url, param, "'")
             resp = client.get(probe_url)
             if resp and resp.text:
                 for (raw_pattern, dbms), regex in zip(ERROR_SIGNATURES, ERROR_RE):
-                    if regex.search(resp.text):
+                    # The signature must appear AFTER injecting the quote but NOT
+                    # in the benign baseline — otherwise it's just page content.
+                    if regex.search(resp.text) and not regex.search(base1_text):
                         findings.append(
                             Finding(
                                 module=self.name,
@@ -73,12 +88,12 @@ class SqliCheckModule(ScanModule):
                                 severity=Severity.HIGH,
                                 target=base_url,
                                 matched_at=probe_url,
-                                evidence=f"Database error signature matched: {raw_pattern}",
+                                evidence=f"Database error signature appeared only after injecting a quote: {raw_pattern}",
                                 description=(
                                     f"Injecting a single quote into '{param}' triggered a {dbms} "
-                                    "error message in the response, suggesting unsanitized input "
-                                    "reaches a SQL query. Verify manually before reporting — some "
-                                    "WAFs/frameworks echo generic error pages that can look similar."
+                                    "error message that was absent from the baseline response, "
+                                    "suggesting unsanitized input reaches a SQL query. Verify "
+                                    "manually before reporting."
                                 ),
                                 remediation="Use parameterized queries / prepared statements. Never concatenate user input into SQL.",
                                 references=["https://owasp.org/www-community/attacks/SQL_Injection"],
@@ -86,7 +101,7 @@ class SqliCheckModule(ScanModule):
                         )
                         break  # one match per param is enough signal
 
-            # -- Boolean-based differential check --
+            # -- Boolean-based differential check (noise-aware) --
             true_url = self._url_with_param(base_url, param, "1 OR 1=1")
             false_url = self._url_with_param(base_url, param, "1 AND 1=2")
             resp_true = client.get(true_url)
@@ -94,7 +109,13 @@ class SqliCheckModule(ScanModule):
 
             if resp_true and resp_false and resp_true.status_code == 200 and resp_false.status_code == 200:
                 len_true, len_false = len(resp_true.text or ""), len(resp_false.text or "")
-                if len_true and len_false and abs(len_true - len_false) > max(50, 0.15 * len_true):
+                diff = abs(len_true - len_false)
+                # The true/false gap must clearly beat the page's own noise (and a
+                # sane absolute/relative floor). On very dynamic pages `noise` is
+                # large, which correctly SUPPRESSES this length-based heuristic —
+                # it can't distinguish injection from churn there.
+                threshold = max(150, noise * 4, int(0.20 * baseline_len))
+                if len_true and len_false and diff > threshold:
                     findings.append(
                         Finding(
                             module=self.name,
@@ -102,12 +123,15 @@ class SqliCheckModule(ScanModule):
                             severity=Severity.MEDIUM,
                             target=base_url,
                             matched_at=true_url,
-                            evidence=f"Response length differs significantly: true={len_true} bytes vs false={len_false} bytes",
+                            evidence=(
+                                f"true={len_true}B vs false={len_false}B (diff={diff}B) "
+                                f"exceeds baseline noise={noise}B and threshold={threshold}B"
+                            ),
                             description=(
-                                "A response-length difference between an always-true and "
-                                "always-false condition can indicate blind SQL injection, but "
-                                "can also be caused by unrelated dynamic content. Manual "
-                                "confirmation strongly recommended before reporting."
+                                "The always-true and always-false conditions produced responses "
+                                "whose size difference clearly exceeds the page's natural "
+                                "variation, which can indicate blind SQL injection. Manual "
+                                "confirmation still recommended before reporting."
                             ),
                             remediation="Use parameterized queries / prepared statements.",
                         )

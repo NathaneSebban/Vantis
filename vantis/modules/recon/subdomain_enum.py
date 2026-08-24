@@ -40,7 +40,10 @@ class SubdomainEnumModule(ScanModule):
             names = entry.get("name_value", "")
             for line in names.splitlines():
                 line = line.strip().lstrip("*.").lower()
-                if line.endswith(domain):
+                # Exact domain or a true subdomain only. A plain endswith(domain)
+                # would wrongly match sibling domains owned by others, e.g.
+                # "evil<domain>" ends with "<domain>".
+                if line == domain or line.endswith("." + domain):
                     subdomains.add(line)
 
         in_scope = [s for s in subdomains if self.ctx.target.is_in_scope(s)]

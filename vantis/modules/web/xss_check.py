@@ -53,10 +53,17 @@ class XssCheckModule(ScanModule):
             if resp is None or not resp.text:
                 continue
 
+            # Reflected markup only executes when the browser parses the response
+            # as HTML. A canary echoed unescaped in a JSON/plain-text API response
+            # is NOT XSS in that context, so gate the HIGH finding on the
+            # Content-Type (treat a missing type as HTML, the risky default).
+            content_type = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+            served_as_html = content_type == "" or "html" in content_type or "xml" in content_type
+
             # Look for the canary reflected WITHOUT its HTML metacharacters
             # being escaped (i.e. the raw tag structure survived).
             unescaped_pattern = re.compile(re.escape(f"<svg id={canary}>"))
-            if unescaped_pattern.search(resp.text):
+            if unescaped_pattern.search(resp.text) and served_as_html:
                 findings.append(
                     Finding(
                         module=self.name,
@@ -64,7 +71,7 @@ class XssCheckModule(ScanModule):
                         severity=Severity.HIGH,
                         target=base_url,
                         matched_at=test_url,
-                        evidence=f"Injected marker reflected unescaped: <svg id={canary}>",
+                        evidence=f"Injected marker reflected unescaped (Content-Type: {content_type or 'unset'}): <svg id={canary}>",
                         description=(
                             f"The '{param}' parameter reflects attacker-controlled input into "
                             "the HTML response without encoding. Confirm manually and check the "
@@ -72,6 +79,21 @@ class XssCheckModule(ScanModule):
                         ),
                         remediation="Context-aware output encoding (HTML-entity encode for body context) or a templating engine with autoescaping.",
                         references=["https://owasp.org/www-community/attacks/xss/"],
+                    )
+                )
+            elif unescaped_pattern.search(resp.text) and not served_as_html:
+                # Reflected unescaped but not served as HTML — not exploitable as
+                # XSS in this context, but worth noting (could matter if the
+                # content type ever changes, or for content sniffing).
+                findings.append(
+                    Finding(
+                        module=self.name,
+                        title=f"Parameter '{param}' reflected unescaped in non-HTML response",
+                        severity=Severity.INFO,
+                        target=base_url,
+                        matched_at=test_url,
+                        evidence=f"Reflected unescaped but Content-Type is '{content_type or 'unset'}', not HTML.",
+                        description="Input reflects without encoding, but the response is not served as HTML, so it does not execute as XSS here. Re-check if the endpoint can return HTML.",
                     )
                 )
             elif canary in resp.text:
