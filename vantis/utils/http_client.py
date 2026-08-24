@@ -45,3 +45,16 @@ class HttpClient:
             return self.session.post(url, **kwargs)
         except requests.RequestException:
             return None
+
+    def request(self, method: str, url: str, **kwargs) -> requests.Response | None:
+        """Issue an arbitrary HTTP method (OPTIONS, TRACE, PUT…). Used by
+        detection modules that probe method handling; never sends a body unless
+        the caller explicitly provides one."""
+        self._throttle()
+        kwargs.setdefault("timeout", self.timeout)
+        kwargs.setdefault("allow_redirects", False)
+        kwargs.setdefault("verify", True)
+        try:
+            return self.session.request(method, url, **kwargs)
+        except requests.RequestException:
+            return None
