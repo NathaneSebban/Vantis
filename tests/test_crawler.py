@@ -65,3 +65,32 @@ def test_set_param_preserves_other_params():
     url = set_param("http://example.com/p?a=1&b=2", "a", "INJECT")
     assert "b=2" in url
     assert "a=INJECT" in url
+
+
+@responses.activate
+def test_discovers_params_from_robots_and_sitemap():
+    responses.add(responses.GET, "http://example.com/robots.txt",
+                  body="User-agent: *\nDisallow: /admin?debug=1\nDisallow: /\n", status=200,
+                  content_type="text/plain")
+    responses.add(responses.GET, "http://example.com/sitemap.xml",
+                  body="<urlset><url><loc>http://example.com/p?id=5</loc></url></urlset>", status=200,
+                  content_type="application/xml")
+    responses.add(responses.GET, "http://example.com/sitemap_index.xml", status=404)
+    responses.add(responses.GET, "http://example.com", body="<html>home</html>", status=200,
+                  content_type="text/html")
+    points = discover_injection_points(_client(), Target("http://example.com"), use_wayback=False)
+    params = {(p.param, p.source) for p in points}
+    assert ("debug", "sitemap") in params   # from robots.txt Disallow path
+    assert ("id", "sitemap") in params       # from sitemap.xml <loc>
+
+
+@responses.activate
+def test_discovers_params_from_wayback():
+    responses.add(responses.GET, re.compile(r"https://web\.archive\.org/cdx/.*"),
+                  json=[["original"], ["http://example.com/search?q=test"],
+                        ["http://example.com/nofilter"]], status=200)
+    responses.add(responses.GET, "http://example.com", body="<html>home</html>", status=200,
+                  content_type="text/html")
+    responses.add(responses.GET, re.compile(r"http://example\.com/(robots|sitemap).*"), status=404)
+    points = discover_injection_points(_client(), Target("http://example.com"))
+    assert any(p.param == "q" for p in points)
