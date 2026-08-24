@@ -1,0 +1,15 @@
+id: kubernetes-api-exposed
+info:
+  name: Kubernetes API server exposed
+  severity: high
+  description: The Kubernetes API root is reachable, indicating a potentially unauthenticated control plane.
+  reference:
+    - https://kubernetes.io/docs/concepts/overview/kubernetes-api/
+request:
+  method: GET
+  path: /api
+matchers:
+  status: [200]
+  body_contains:
+    - "serverAddressByClientCIDRs"
+    - "versions"

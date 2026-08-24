@@ -1,0 +1,14 @@
+id: composer-json-exposed
+info:
+  name: composer.json exposed
+  severity: low
+  description: composer.json is reachable, disclosing PHP dependencies and versions useful for CVE lookups.
+  reference:
+    - https://getcomposer.org/
+request:
+  method: GET
+  path: /composer.json
+matchers:
+  status: [200]
+  body_contains:
+    - "\"require\""

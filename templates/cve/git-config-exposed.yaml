@@ -1,0 +1,15 @@
+id: git-config-exposed
+info:
+  name: Exposed .git/config
+  severity: high
+  description: The .git/config file is reachable, exposing repository metadata and often full source code history.
+  reference:
+    - https://owasp.org/www-community/attacks/Source_Code_Disclosure
+request:
+  method: GET
+  path: /.git/config
+matchers:
+  status: [200]
+  body_contains:
+    - "[core]"
+    - "repositoryformatversion"

@@ -107,12 +107,30 @@ def run_templates(
 ) -> list[Finding]:
     findings: list[Finding] = []
 
+    # Catch-all / soft-404 baseline: fetch a path that cannot exist. On servers
+    # that answer 200 with the same page for ANY URL (SPAs, custom soft-404s), a
+    # template whose markers also appear on that page would false-positive — so
+    # any template that ALSO matches this baseline response is suppressed below.
+    import secrets
+
+    base = base_url.rstrip("/")
+    baseline = client.get(f"{base}/vantis-nonexistent-{secrets.token_hex(8)}")
+    baseline_data = (
+        (baseline.status_code, baseline.text or "", dict(baseline.headers))
+        if baseline is not None else None
+    )
+
     for tmpl in templates:
-        url = base_url.rstrip("/") + tmpl.path
+        url = base + tmpl.path
         resp = client.get(url) if tmpl.method == "GET" else client.session.request(
             tmpl.method, url, timeout=client.timeout
         )
         if resp is None:
+            continue
+
+        # If the template also matches the catch-all page, the "match" is the
+        # server's default response, not the real resource — skip it.
+        if baseline_data is not None and tmpl.matches(*baseline_data):
             continue
 
         if tmpl.matches(resp.status_code, resp.text, dict(resp.headers)):

@@ -1,0 +1,15 @@
+id: prometheus-metrics-exposed
+info:
+  name: Prometheus metrics endpoint exposed
+  severity: low
+  description: A Prometheus /metrics endpoint is public, leaking internal metrics, hostnames and paths.
+  reference:
+    - https://prometheus.io/docs/instrumenting/exposition_formats/
+request:
+  method: GET
+  path: /metrics
+matchers:
+  status: [200]
+  body_contains:
+    - "# HELP"
+    - "# TYPE"

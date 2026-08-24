@@ -1,0 +1,14 @@
+id: env-file-generic
+info:
+  name: Environment .env file exposed
+  severity: critical
+  description: A .env file is reachable and contains key=value app secrets (DB credentials, API keys).
+  reference:
+    - https://owasp.org/www-community/vulnerabilities/Information_exposure_through_environment_variables
+request:
+  method: GET
+  path: /.env
+matchers:
+  status: [200]
+  body_contains:
+    - "APP_KEY="

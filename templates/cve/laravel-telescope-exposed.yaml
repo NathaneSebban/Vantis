@@ -1,0 +1,14 @@
+id: laravel-telescope-exposed
+info:
+  name: Laravel Telescope exposed
+  severity: high
+  description: Laravel Telescope exposes requests, queries, and secrets in development. It must not be public.
+  reference:
+    - https://laravel.com/docs/telescope
+request:
+  method: GET
+  path: /telescope/requests
+matchers:
+  status: [200]
+  body_contains:
+    - "Telescope"

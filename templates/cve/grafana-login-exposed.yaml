@@ -1,0 +1,14 @@
+id: grafana-login-exposed
+info:
+  name: Grafana instance exposed
+  severity: low
+  description: A Grafana login page is publicly reachable; older versions have known auth-bypass CVEs.
+  reference:
+    - https://grafana.com/
+request:
+  method: GET
+  path: /login
+matchers:
+  status: [200]
+  body_contains:
+    - "Grafana"

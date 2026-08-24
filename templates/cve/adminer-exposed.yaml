@@ -1,0 +1,14 @@
+id: adminer-exposed
+info:
+  name: Adminer database tool exposed
+  severity: high
+  description: Adminer is a full database management UI; if reachable it is a direct path to the database.
+  reference:
+    - https://www.adminer.org/
+request:
+  method: GET
+  path: /adminer.php
+matchers:
+  status: [200]
+  body_contains:
+    - "Adminer"

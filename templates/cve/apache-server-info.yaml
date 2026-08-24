@@ -1,0 +1,14 @@
+id: apache-server-info
+info:
+  name: Apache mod_info (/server-info) exposed
+  severity: medium
+  description: Apache server-info discloses module configuration and internal details.
+  reference:
+    - https://httpd.apache.org/docs/current/mod/mod_info.html
+request:
+  method: GET
+  path: /server-info
+matchers:
+  status: [200]
+  body_contains:
+    - "Apache Server Information"

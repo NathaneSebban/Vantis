@@ -1,0 +1,15 @@
+id: wordpress-users-api
+info:
+  name: WordPress user enumeration via REST API
+  severity: low
+  description: The WordPress REST users endpoint is public, enabling username enumeration for credential attacks.
+  reference:
+    - https://developer.wordpress.org/rest-api/reference/users/
+request:
+  method: GET
+  path: /wp-json/wp/v2/users
+matchers:
+  status: [200]
+  body_contains:
+    - "avatar_urls"
+    - "slug"

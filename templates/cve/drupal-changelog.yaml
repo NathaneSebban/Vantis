@@ -1,0 +1,14 @@
+id: drupal-changelog
+info:
+  name: Drupal CHANGELOG.txt exposed
+  severity: info
+  description: Drupal CHANGELOG.txt discloses the exact version, easing CVE lookups.
+  reference:
+    - https://www.drupal.org/
+request:
+  method: GET
+  path: /CHANGELOG.txt
+matchers:
+  status: [200]
+  body_contains:
+    - "Drupal"

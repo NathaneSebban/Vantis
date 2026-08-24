@@ -1,0 +1,14 @@
+id: wordpress-readme
+info:
+  name: WordPress readme.html exposed
+  severity: info
+  description: The WordPress readme.html discloses the exact WordPress version, easing CVE lookups.
+  reference:
+    - https://wordpress.org/
+request:
+  method: GET
+  path: /readme.html
+matchers:
+  status: [200]
+  body_contains:
+    - "WordPress"

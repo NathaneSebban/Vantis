@@ -1,0 +1,14 @@
+id: gitlab-login-exposed
+info:
+  name: GitLab instance exposed
+  severity: info
+  description: A GitLab sign-in page is publicly reachable; review whether it should be internet-facing.
+  reference:
+    - https://about.gitlab.com/
+request:
+  method: GET
+  path: /users/sign_in
+matchers:
+  status: [200]
+  body_contains:
+    - "GitLab"

@@ -1,0 +1,14 @@
+id: wp-debug-log-exposed
+info:
+  name: WordPress debug.log exposed
+  severity: medium
+  description: wp-content/debug.log is reachable and can leak paths, queries and errors.
+  reference:
+    - https://wordpress.org/documentation/article/debugging-in-wordpress/
+request:
+  method: GET
+  path: /wp-content/debug.log
+matchers:
+  status: [200]
+  body_contains:
+    - "PHP"

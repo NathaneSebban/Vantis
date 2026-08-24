@@ -1,0 +1,14 @@
+id: swagger-ui-exposed
+info:
+  name: Swagger UI exposed
+  severity: low
+  description: An interactive Swagger UI is public, disclosing the API surface. Review whether it should be reachable.
+  reference:
+    - https://swagger.io/tools/swagger-ui/
+request:
+  method: GET
+  path: /swagger-ui/index.html
+matchers:
+  status: [200]
+  body_contains:
+    - "Swagger UI"

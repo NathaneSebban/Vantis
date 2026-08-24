@@ -1,0 +1,14 @@
+id: joomla-manifest
+info:
+  name: Joomla version manifest exposed
+  severity: info
+  description: The Joomla XML manifest discloses the exact version.
+  reference:
+    - https://www.joomla.org/
+request:
+  method: GET
+  path: /administrator/manifests/files/joomla.xml
+matchers:
+  status: [200]
+  body_contains:
+    - "<name>Joomla"

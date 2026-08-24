@@ -1,0 +1,15 @@
+id: phpinfo-exposed
+info:
+  name: phpinfo() page exposed
+  severity: medium
+  description: A phpinfo() page leaks detailed server, PHP and environment configuration.
+  reference:
+    - https://www.php.net/manual/en/function.phpinfo.php
+request:
+  method: GET
+  path: /phpinfo.php
+matchers:
+  status: [200]
+  body_contains:
+    - "phpinfo()"
+    - "PHP Version"
