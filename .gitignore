@@ -18,3 +18,8 @@ venv/
 node_modules/
 web/dist/
 web/node_modules/
+
+# TS build artifacts
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
