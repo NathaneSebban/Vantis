@@ -67,6 +67,21 @@ def test_pdf_export(tmp_path: Path):
     assert len(data) > 500            # non-trivial content
 
 
+def test_sarif_export(tmp_path: Path):
+    r = make_report()
+    out = tmp_path / "report.sarif"
+    r.to_sarif(out)
+    data = json.loads(out.read_text())
+    assert data["version"] == "2.1.0"
+    run = data["runs"][0]
+    assert run["tool"]["driver"]["name"] == "Vantis"
+    assert len(run["results"]) == 3
+    # critical -> error level, with a numeric security-severity for GitHub.
+    crit = next(res for res in run["results"] if res["properties"]["severity"] == "critical")
+    assert crit["level"] == "error"
+    assert crit["properties"]["security-severity"] == "9.5"
+
+
 def test_html_export_escapes_finding_fields(tmp_path: Path):
     # A finding can carry content reflected from the scanned target. The HTML
     # report must escape it so opening the report never executes injected markup.

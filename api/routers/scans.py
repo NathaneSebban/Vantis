@@ -10,16 +10,18 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api.database import get_db
-from api.models import FindingRow, ScanRow, ScanStatus
+from api.models import FindingRow, FindingStatus, ScanRow, ScanStatus
 from api.rate_limit import limiter
 from api.config import get_settings
 from api.scan_runner import scan_manager
 from api.security import require_api_key, websocket_authorized
 from api.schemas import (
     FindingOut,
+    FindingStatusUpdate,
     ScanCreate,
     ScanCreatedResponse,
     ScanDetail,
+    ScanDiff,
     ScanListResponse,
     ScanSummary,
     SeverityCounts,
@@ -142,6 +144,7 @@ def get_findings(
     db: Session = Depends(get_db),
     severity: str | None = Query(None, description="Comma-separated: e.g. high,critical"),
     module: str | None = Query(None, description="Comma-separated module names: e.g. reflected-xss"),
+    status: str | None = Query(None, description="Comma-separated: open,false_positive,confirmed"),
 ) -> list[FindingOut]:
     _get_scan_or_404(db, scan_id)
     stmt = select(FindingRow).where(FindingRow.scan_id == scan_id)
@@ -154,6 +157,10 @@ def get_findings(
         wanted = [m.strip().lower() for m in module.split(",") if m.strip()]
         if wanted:
             stmt = stmt.where(FindingRow.module.in_(wanted))
+    if status:
+        wanted = [s.strip().lower() for s in status.split(",") if s.strip()]
+        if wanted:
+            stmt = stmt.where(FindingRow.status.in_(wanted))
 
     rows = db.scalars(stmt).all()
     # Sort by severity weight, highest first — same order the report uses.
@@ -161,11 +168,54 @@ def get_findings(
     return [FindingOut(**r.to_dict()) for r in rows]
 
 
+@router.patch("/{scan_id}/findings/{finding_id}", response_model=FindingOut,
+              dependencies=[Depends(require_api_key)])
+def update_finding_status(
+    scan_id: str, finding_id: int, payload: FindingStatusUpdate, db: Session = Depends(get_db),
+) -> FindingOut:
+    """Triage a finding (mark false_positive / confirmed / reopen)."""
+    row = db.scalar(select(FindingRow).where(
+        FindingRow.id == finding_id, FindingRow.scan_id == scan_id))
+    if row is None:
+        raise HTTPException(status_code=404, detail="finding not found")
+    row.status = payload.status
+    db.commit()
+    return FindingOut(**row.to_dict())
+
+
+@router.get("/{scan_id}/diff", response_model=ScanDiff, dependencies=[Depends(require_api_key)])
+def diff_scans(
+    scan_id: str, against: str = Query(..., description="Scan id to compare against (usually older)"),
+    db: Session = Depends(get_db),
+) -> ScanDiff:
+    """Compare two scans by finding identity (module|title|location): what's new
+    in this scan vs `against`, what was fixed, and how many are unchanged.
+    False-positive findings are excluded from the comparison."""
+    _get_scan_or_404(db, scan_id)
+    _get_scan_or_404(db, against)
+
+    def load(sid: str) -> dict[str, FindingRow]:
+        rows = db.scalars(select(FindingRow).where(
+            FindingRow.scan_id == sid,
+            FindingRow.status != FindingStatus.FALSE_POSITIVE)).all()
+        return {r.identity: r for r in rows}
+
+    base = load(scan_id)
+    other = load(against)
+
+    new = [FindingOut(**base[k].to_dict()) for k in base.keys() - other.keys()]
+    fixed = [FindingOut(**other[k].to_dict()) for k in other.keys() - base.keys()]
+    unchanged = len(base.keys() & other.keys())
+
+    return ScanDiff(base_scan_id=scan_id, against_scan_id=against,
+                    new=new, fixed=fixed, unchanged_count=unchanged)
+
+
 @router.get("/{scan_id}/report", dependencies=[Depends(require_api_key)])
 def get_report(
     scan_id: str,
     db: Session = Depends(get_db),
-    format: str = Query("json", pattern="^(json|html|md|pdf)$"),
+    format: str = Query("json", pattern="^(json|html|md|pdf|sarif)$"),
 ) -> Response:
     """Rebuild a library Report from persisted findings and reuse the existing
     exporters so downloads match exactly what the CLI produces."""
@@ -186,7 +236,8 @@ def get_report(
     ext, media = {"json": ("json", "application/json"),
                   "html": ("html", "text/html"),
                   "md": ("md", "text/markdown"),
-                  "pdf": ("pdf", "application/pdf")}[format]
+                  "pdf": ("pdf", "application/pdf"),
+                  "sarif": ("sarif", "application/sarif+json")}[format]
 
     # PDF is binary; the others are text. Create the temp file accordingly.
     binary = format == "pdf"
@@ -201,6 +252,8 @@ def get_report(
             report.to_html(tmp_path)
         elif format == "pdf":
             report.to_pdf(tmp_path)
+        elif format == "sarif":
+            report.to_sarif(tmp_path)
         else:
             report.to_markdown(tmp_path)
         content = tmp_path.read_bytes()

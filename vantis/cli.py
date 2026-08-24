@@ -112,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
             report.to_html(args.output)
         elif args.output.endswith(".pdf"):
             report.to_pdf(args.output)
+        elif args.output.endswith(".sarif"):
+            report.to_sarif(args.output)
         else:
             print(f"[!] Unknown output extension for '{args.output}', defaulting to JSON")
             report.to_json(args.output + ".json")

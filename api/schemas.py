@@ -127,6 +127,7 @@ class ScanListResponse(BaseModel):
 
 
 class FindingOut(BaseModel):
+    id: Optional[int] = None
     module: str
     title: str
     severity: str
@@ -137,3 +138,24 @@ class FindingOut(BaseModel):
     references: list[str] = Field(default_factory=list)
     matched_at: str = ""
     timestamp: str = ""
+    status: str = "open"
+
+
+class FindingStatusUpdate(BaseModel):
+    status: str = Field(..., description="open | false_positive | confirmed")
+
+    @field_validator("status")
+    @classmethod
+    def _valid(cls, v: str) -> str:
+        allowed = {"open", "false_positive", "confirmed"}
+        if v not in allowed:
+            raise ValueError(f"status must be one of: {', '.join(sorted(allowed))}")
+        return v
+
+
+class ScanDiff(BaseModel):
+    base_scan_id: str
+    against_scan_id: str
+    new: list[FindingOut] = Field(default_factory=list)       # in base, not in against
+    fixed: list[FindingOut] = Field(default_factory=list)     # in against, not in base
+    unchanged_count: int = 0

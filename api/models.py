@@ -78,12 +78,21 @@ class FindingRow(Base):
     refs: Mapped[str] = mapped_column("refs", Text, default="")  # newline-separated
     matched_at: Mapped[str] = mapped_column(String(512), default="")
     timestamp: Mapped[str] = mapped_column(String(40), default="")
+    # Triage state: open | false_positive | confirmed. Lets users suppress noise.
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)
 
     scan: Mapped[ScanRow] = relationship(back_populates="findings")
 
+    @property
+    def identity(self) -> str:
+        """Stable key for diffing across scans of the same target."""
+        return f"{self.module}|{self.title}|{self.matched_at}"
+
     def to_dict(self) -> dict:
-        """Return the same shape as the library's Finding.to_dict()."""
+        """Return the same shape as the library's Finding.to_dict(), plus the
+        triage status (an API-only field)."""
         return {
+            "id": self.id,
             "module": self.module,
             "title": self.title,
             "severity": self.severity,
@@ -94,4 +103,12 @@ class FindingRow(Base):
             "references": [r for r in self.refs.split("\n") if r],
             "matched_at": self.matched_at,
             "timestamp": self.timestamp,
+            "status": self.status,
         }
+
+
+class FindingStatus:
+    OPEN = "open"
+    FALSE_POSITIVE = "false_positive"
+    CONFIRMED = "confirmed"
+    ALL = {OPEN, FALSE_POSITIVE, CONFIRMED}

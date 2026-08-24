@@ -158,6 +158,49 @@ def test_get_missing_scan_is_404(client):
     assert client.get("/api/scans/does-not-exist").status_code == 404
 
 
+def _completed_scan(client) -> str:
+    r = client.post("/api/scans", json={"target": "https://example.com", "authorized": True, "modules": ["web"]})
+    scan_id = r.json()["scan_id"]
+    _wait_for_status(client, scan_id, {"completed"})
+    return scan_id
+
+
+def test_sarif_report_export(client):
+    scan_id = _completed_scan(client)
+    rep = client.get(f"/api/scans/{scan_id}/report?format=sarif")
+    assert rep.status_code == 200
+    assert rep.headers["content-type"] == "application/sarif+json"
+    assert b'"version": "2.1.0"' in rep.content
+
+
+def test_finding_triage_and_status_filter(client):
+    scan_id = _completed_scan(client)
+    findings = client.get(f"/api/scans/{scan_id}/findings").json()
+    assert findings and all(f["status"] == "open" for f in findings)
+
+    fid = findings[0]["id"]
+    upd = client.patch(f"/api/scans/{scan_id}/findings/{fid}", json={"status": "false_positive"})
+    assert upd.status_code == 200 and upd.json()["status"] == "false_positive"
+
+    # filter by status
+    fps = client.get(f"/api/scans/{scan_id}/findings?status=false_positive").json()
+    assert len(fps) == 1 and fps[0]["id"] == fid
+    opens = client.get(f"/api/scans/{scan_id}/findings?status=open").json()
+    assert all(f["id"] != fid for f in opens)
+
+    # invalid status -> 422
+    assert client.patch(f"/api/scans/{scan_id}/findings/{fid}", json={"status": "bogus"}).status_code == 422
+
+
+def test_scan_diff(client):
+    a = _completed_scan(client)
+    b = _completed_scan(client)
+    # Identical fake findings -> everything unchanged, nothing new/fixed.
+    diff = client.get(f"/api/scans/{a}/diff?against={b}").json()
+    assert diff["new"] == [] and diff["fixed"] == []
+    assert diff["unchanged_count"] == 2
+
+
 # -- optional hardening (opt-in via settings) ------------------------
 
 def test_api_key_enforced_when_configured(client, monkeypatch):

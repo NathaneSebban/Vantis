@@ -227,3 +227,55 @@ class Report:
             pdf.ln(4)
 
         pdf.output(str(path))
+
+    def to_sarif(self, path: str | Path) -> None:
+        """Export SARIF 2.1.0 for CI/CD integration (e.g. GitHub code scanning).
+
+        Severity maps to SARIF `level` (error/warning/note) plus a numeric
+        `security-severity` GitHub uses to rank alerts.
+        """
+        level_map = {"critical": "error", "high": "error", "medium": "warning",
+                     "low": "note", "info": "note"}
+        sec_severity = {"critical": "9.5", "high": "8.0", "medium": "5.0", "low": "3.0", "info": "1.0"}
+
+        rules: dict[str, dict] = {}
+        results = []
+        for f in self.sorted_findings():
+            if f.module not in rules:
+                rules[f.module] = {
+                    "id": f.module,
+                    "name": f.module,
+                    "shortDescription": {"text": f.module},
+                    "helpUri": (f.references[0] if f.references else "https://github.com/"),
+                }
+            results.append({
+                "ruleId": f.module,
+                "level": level_map.get(f.severity.value, "note"),
+                "message": {"text": f"{f.title}. {f.description}".strip()},
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {"uri": f.matched_at or f.target}
+                    }
+                }],
+                "properties": {
+                    "severity": f.severity.value,
+                    "security-severity": sec_severity.get(f.severity.value, "1.0"),
+                    "evidence": f.evidence,
+                    "remediation": f.remediation,
+                },
+            })
+
+        sarif = {
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [{
+                "tool": {"driver": {
+                    "name": "Vantis",
+                    "informationUri": "https://github.com/NathaneSebban/Vantis",
+                    "version": "0.1.0",
+                    "rules": list(rules.values()),
+                }},
+                "results": results,
+            }],
+        }
+        Path(path).write_text(json.dumps(sarif, indent=2, ensure_ascii=False), encoding="utf-8")
