@@ -100,7 +100,7 @@ Le serveur de dev Vite proxifie `/api` (REST + WebSocket) vers `http://localhost
 | `GET` | `/api/scans` | Historique paginé |
 | `GET` | `/api/scans/{id}` | Statut + progression (module en cours, findings) |
 | `GET` | `/api/scans/{id}/findings` | Findings, filtrables `?severity=` et `?module=` |
-| `GET` | `/api/scans/{id}/report?format=json\|html\|md` | Export du rapport |
+| `GET` | `/api/scans/{id}/report?format=json\|html\|md\|pdf` | Export du rapport |
 | `DELETE` | `/api/scans/{id}` | Annule un scan en cours, ou supprime l'historique |
 | `WS` | `/api/scans/{id}/live` | Flux temps réel des findings pendant le scan |
 

@@ -161,7 +161,7 @@ def get_findings(
 def get_report(
     scan_id: str,
     db: Session = Depends(get_db),
-    format: str = Query("json", pattern="^(json|html|md)$"),
+    format: str = Query("json", pattern="^(json|html|md|pdf)$"),
 ) -> Response:
     """Rebuild a library Report from persisted findings and reuse the existing
     exporters so downloads match exactly what the CLI produces."""
@@ -181,15 +181,22 @@ def get_report(
 
     ext, media = {"json": ("json", "application/json"),
                   "html": ("html", "text/html"),
-                  "md": ("md", "text/markdown")}[format]
+                  "md": ("md", "text/markdown"),
+                  "pdf": ("pdf", "application/pdf")}[format]
 
-    with tempfile.NamedTemporaryFile("w+", suffix=f".{ext}", delete=False, encoding="utf-8") as tmp:
+    # PDF is binary; the others are text. Create the temp file accordingly.
+    binary = format == "pdf"
+    mode = "wb" if binary else "w+"
+    kwargs = {} if binary else {"encoding": "utf-8"}
+    with tempfile.NamedTemporaryFile(mode, suffix=f".{ext}", delete=False, **kwargs) as tmp:
         tmp_path = Path(tmp.name)
     try:
         if format == "json":
             report.to_json(tmp_path)
         elif format == "html":
             report.to_html(tmp_path)
+        elif format == "pdf":
+            report.to_pdf(tmp_path)
         else:
             report.to_markdown(tmp_path)
         content = tmp_path.read_bytes()

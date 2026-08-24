@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="recon,web,cve",
         help="Comma-separated categories to run: recon,web,cve (default: all)",
     )
-    parser.add_argument("--output", "-o", help="Output file. Extension picks the format: .json/.md/.html")
+    parser.add_argument("--output", "-o", help="Output file. Extension picks the format: .json/.md/.html/.pdf")
     parser.add_argument("--timeout", type=float, default=10.0, help="Per-request timeout in seconds (default 10)")
     parser.add_argument("--delay", type=float, default=0.3, help="Minimum delay between requests in seconds (default 0.3, be polite)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose module logging")
@@ -82,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
             report.to_markdown(args.output)
         elif args.output.endswith(".html"):
             report.to_html(args.output)
+        elif args.output.endswith(".pdf"):
+            report.to_pdf(args.output)
         else:
             print(f"[!] Unknown output extension for '{args.output}', defaulting to JSON")
             report.to_json(args.output + ".json")

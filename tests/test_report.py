@@ -54,6 +54,19 @@ def test_html_export(tmp_path: Path):
     assert "Critical issue" in content
 
 
+def test_pdf_export(tmp_path: Path):
+    r = make_report()
+    # Include non-latin-1 content to ensure the exporter sanitizes instead of
+    # crashing on exotic bytes a finding might echo from a target.
+    r.add(Finding(module="tech-detect", title="Unicode ✓ é 日本語 test", severity=Severity.INFO,
+                  target="example.com", evidence="server: nginx/1.24.0"))
+    out = tmp_path / "report.pdf"
+    r.to_pdf(out)
+    data = out.read_bytes()
+    assert data[:5] == b"%PDF-"       # valid PDF header
+    assert len(data) > 500            # non-trivial content
+
+
 def test_html_export_escapes_finding_fields(tmp_path: Path):
     # A finding can carry content reflected from the scanned target. The HTML
     # report must escape it so opening the report never executes injected markup.

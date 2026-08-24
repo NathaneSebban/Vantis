@@ -141,3 +141,89 @@ class Report:
   </table>
 </body></html>"""
         Path(path).write_text(html_doc, encoding="utf-8")
+
+    def to_pdf(self, path: str | Path) -> None:
+        """Render the report as a PDF.
+
+        fpdf2 is an optional dependency (pure-Python, no native libraries) so
+        the CLI-only install stays lean; it's imported here and a clear error
+        is raised if it's missing. Install with the 'pdf' extra:
+        pip install -e ".[pdf]".
+        """
+        try:
+            from fpdf import FPDF
+        except ImportError as e:  # pragma: no cover - exercised via the error path
+            raise RuntimeError(
+                "PDF export requires fpdf2. Install it with: pip install fpdf2 "
+                "(or install Vantis with the 'pdf' extra: pip install -e '.[pdf]')."
+            ) from e
+
+        sev_colors = {
+            "critical": (127, 29, 29), "high": (185, 28, 28), "medium": (180, 83, 9),
+            "low": (29, 78, 216), "info": (55, 65, 81),
+        }
+
+        def s(text: str) -> str:
+            # Core PDF fonts are latin-1; replace anything outside it so a
+            # finding echoing exotic bytes from a target can't crash the export.
+            return (text or "").encode("latin-1", "replace").decode("latin-1")
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+
+        # Header
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, s(f"Vantis Report - {self.target}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(100, 100, 100)
+        pdf.cell(0, 5, s(f"Generated {datetime.now(timezone.utc).isoformat()}  -  {len(self.findings)} findings"),
+                 new_x="LMARGIN", new_y="NEXT")
+
+        # Severity summary
+        counts = {sev.value: 0 for sev in Severity}
+        for f in self.findings:
+            counts[f.severity.value] += 1
+        pdf.ln(3)
+        pdf.set_font("Helvetica", "B", 10)
+        for sev in ["critical", "high", "medium", "low", "info"]:
+            r, g, b = sev_colors[sev]
+            pdf.set_fill_color(r, g, b)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(34, 7, s(f"{sev.upper()}: {counts[sev]}"), align="C", fill=True)
+            pdf.cell(2, 7, "", new_x="RIGHT")
+        pdf.ln(11)
+
+        # Findings
+        for f in self.sorted_findings():
+            r, g, b = sev_colors[f.severity.value]
+            pdf.set_fill_color(r, g, b)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 8)
+            pdf.cell(20, 6, s(f.severity.value.upper()), align="C", fill=True)
+            pdf.set_text_color(15, 23, 42)
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(3, 6, "", new_x="RIGHT")
+            pdf.multi_cell(0, 6, s(f.title), new_x="LMARGIN", new_y="NEXT")
+
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(80, 80, 80)
+
+            def field(label: str, value: str) -> None:
+                if not value:
+                    return
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.cell(24, 5, s(label), new_x="RIGHT")
+                pdf.set_font("Helvetica", "", 9)
+                pdf.multi_cell(0, 5, s(value), new_x="LMARGIN", new_y="NEXT")
+
+            field("Module:", f.module)
+            field("Location:", f.matched_at or f.target)
+            field("Description:", f.description)
+            field("Evidence:", f.evidence)
+            field("Remediation:", f.remediation)
+            if f.references:
+                field("References:", ", ".join(f.references))
+            pdf.ln(4)
+
+        pdf.output(str(path))

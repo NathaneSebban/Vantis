@@ -130,11 +130,12 @@ def test_full_scan_flow(client):
     assert len(hdr) == 1 and hdr[0]["severity"] == "low"
 
     # reports in each format
-    for fmt, needle in [("json", b"reflected-xss"), ("html", b"<table"), ("md", b"# Vantis Report")]:
+    for fmt, needle in [("json", b"reflected-xss"), ("html", b"<table"), ("md", b"# Vantis Report"), ("pdf", b"%PDF-")]:
         rep = client.get(f"/api/scans/{scan_id}/report?format={fmt}")
         assert rep.status_code == 200
         assert needle in rep.content
         assert "attachment" in rep.headers["content-disposition"]
+    assert client.get(f"/api/scans/{scan_id}/report?format=pdf").headers["content-type"] == "application/pdf"
 
     # history list
     listing = client.get("/api/scans").json()

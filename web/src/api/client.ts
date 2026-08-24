@@ -74,7 +74,7 @@ export const api = {
     return request(`/api/scans/${id}`, { method: "DELETE" });
   },
 
-  reportUrl(id: string, format: "json" | "html" | "md"): string {
+  reportUrl(id: string, format: "json" | "html" | "md" | "pdf"): string {
     return `${BASE}/api/scans/${id}/report?format=${format}`;
   },
 

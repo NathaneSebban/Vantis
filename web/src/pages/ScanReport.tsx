@@ -64,7 +64,7 @@ export function ScanReport() {
           </div>
         </div>
         <div className="flex gap-2">
-          {(["json", "html", "md"] as const).map((fmt) => (
+          {(["pdf", "json", "html", "md"] as const).map((fmt) => (
             <a
               key={fmt}
               href={api.reportUrl(id, fmt)}
