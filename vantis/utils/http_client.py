@@ -14,11 +14,25 @@ DEFAULT_USER_AGENT = "Vantis/0.1 (+authorized-security-testing; contact=YOUR_EMA
 
 
 class HttpClient:
-    def __init__(self, timeout: float = 10.0, delay: float = 0.3, user_agent: str | None = None):
+    def __init__(
+        self,
+        timeout: float = 10.0,
+        delay: float = 0.3,
+        user_agent: str | None = None,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+    ):
         self.timeout = timeout
         self.delay = delay
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": user_agent or DEFAULT_USER_AGENT})
+        # Authenticated scanning: extra headers (e.g. Authorization, custom
+        # session headers) and cookies are attached to every request the
+        # session makes, so all modules probe the target as a logged-in user.
+        if headers:
+            self.session.headers.update(headers)
+        if cookies:
+            self.session.cookies.update(cookies)
         self._last_request_ts = 0.0
 
     def _throttle(self) -> None:

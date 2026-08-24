@@ -77,12 +77,22 @@ class ScanManager:
 
     # -- submission ---------------------------------------------------
 
-    def submit(self, scan_id: str, target: str, scope: list[str], modules: list[str]) -> None:
+    def submit(
+        self,
+        scan_id: str,
+        target: str,
+        scope: list[str],
+        modules: list[str],
+        auth_headers: dict | None = None,
+        auth_cookies: dict | None = None,
+    ) -> None:
         if self._executor is None:
             raise RuntimeError("ScanManager not started: bind_loop() was never called")
         with self._lock:
             self._cancel_flags[scan_id] = threading.Event()
-        self._executor.submit(self._run_job, scan_id, target, scope, modules)
+        # auth_* are passed as call arguments only — they live in-memory for the
+        # duration of the run and are never persisted.
+        self._executor.submit(self._run_job, scan_id, target, scope, modules, auth_headers, auth_cookies)
 
     def request_cancel(self, scan_id: str) -> bool:
         """Signal a running job to stop at the next module boundary.
@@ -114,7 +124,15 @@ class ScanManager:
 
     # -- the job body -------------------------------------------------
 
-    def _run_job(self, scan_id: str, target: str, scope: list[str], modules: list[str]) -> None:
+    def _run_job(
+        self,
+        scan_id: str,
+        target: str,
+        scope: list[str],
+        modules: list[str],
+        auth_headers: dict | None = None,
+        auth_cookies: dict | None = None,
+    ) -> None:
         settings = get_settings()
         db = SessionLocal()
         cancel_flag = self._cancel_flags.get(scan_id)
@@ -179,6 +197,8 @@ class ScanManager:
                 categories=modules,
                 http_timeout=settings.http_timeout,
                 rate_limit_delay=settings.rate_limit_delay,
+                auth_headers=auth_headers or None,
+                auth_cookies=auth_cookies or None,
             )
             engine.run(progress_callback=progress)
 

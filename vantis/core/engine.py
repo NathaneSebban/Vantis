@@ -44,6 +44,8 @@ class Engine:
         verbose: bool = False,
         http_timeout: float = 10.0,
         rate_limit_delay: float = 0.3,
+        auth_headers: dict | None = None,
+        auth_cookies: dict | None = None,
     ):
         self.target = target
         self.categories = categories or ["recon", "web", "cve"]
@@ -53,6 +55,8 @@ class Engine:
             http_timeout=http_timeout,
             rate_limit_delay=rate_limit_delay,
             verbose=verbose,
+            auth_headers=auth_headers,
+            auth_cookies=auth_cookies,
         )
         self.report = Report(target=str(target))
         self._modules: list[type[ScanModule]] = []

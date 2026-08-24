@@ -60,7 +60,7 @@ class CorsCheckModule(ScanModule):
         return None
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         url = self.ctx.target.url
         findings: list[Finding] = []
         seen: set[str] = set()

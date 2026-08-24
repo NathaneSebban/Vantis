@@ -21,7 +21,7 @@ class SubdomainEnumModule(ScanModule):
     description = "Passive subdomain discovery via crt.sh certificate transparency logs"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         domain = self.ctx.target.host
         url = f"https://crt.sh/?q=%25.{domain}&output=json"
 

@@ -45,7 +45,7 @@ class SqliCheckModule(ScanModule):
     description = "Non-destructive SQL injection detection (error-based + boolean differential)"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         target = self.ctx.target
         base_url = str(target)
 

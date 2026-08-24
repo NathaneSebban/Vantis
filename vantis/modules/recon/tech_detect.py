@@ -51,7 +51,7 @@ class TechDetectModule(ScanModule):
     description = "Fingerprint web technologies from headers/cookies/body"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         resp = client.get(str(self.ctx.target))
         if resp is None:
             return []

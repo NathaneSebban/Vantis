@@ -40,7 +40,7 @@ class ExposedPathsModule(ScanModule):
     description = "Probe for commonly-exposed sensitive files and debug endpoints"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         base = str(self.ctx.target).rstrip("/")
 
         # Catch-all / soft-404 baseline: many servers (SPAs with

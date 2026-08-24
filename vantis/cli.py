@@ -31,6 +31,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", "-o", help="Output file. Extension picks the format: .json/.md/.html/.pdf")
     parser.add_argument("--timeout", type=float, default=10.0, help="Per-request timeout in seconds (default 10)")
     parser.add_argument("--delay", type=float, default=0.3, help="Minimum delay between requests in seconds (default 0.3, be polite)")
+    parser.add_argument(
+        "--header", "-H", action="append", default=[], metavar="'Name: value'",
+        help="Extra request header for authenticated scanning (repeatable), e.g. -H 'Authorization: Bearer xxx'",
+    )
+    parser.add_argument(
+        "--cookie", "-C", action="append", default=[], metavar="'name=value'",
+        help="Session cookie for authenticated scanning (repeatable), e.g. -C 'session=abc123'",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose module logging")
     parser.add_argument(
         "--yes-i-am-authorized",
@@ -58,12 +66,29 @@ def main(argv: list[str] | None = None) -> int:
 
     categories = [c.strip() for c in args.modules.split(",") if c.strip()]
 
+    auth_headers = {}
+    for h in args.header:
+        if ":" in h:
+            k, v = h.split(":", 1)
+            auth_headers[k.strip()] = v.strip()
+        else:
+            print(f"[!] Ignoring malformed header (expected 'Name: value'): {h}")
+    auth_cookies = {}
+    for c in args.cookie:
+        if "=" in c:
+            k, v = c.split("=", 1)
+            auth_cookies[k.strip()] = v.strip()
+        else:
+            print(f"[!] Ignoring malformed cookie (expected 'name=value'): {c}")
+
     engine = Engine(
         target=target,
         categories=categories,
         verbose=args.verbose,
         http_timeout=args.timeout,
         rate_limit_delay=args.delay,
+        auth_headers=auth_headers or None,
+        auth_cookies=auth_cookies or None,
     )
     report = engine.run()
 

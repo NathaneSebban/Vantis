@@ -97,7 +97,11 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
     db.add(scan)
     db.commit()
 
-    scan_manager.submit(scan_id, payload.target, payload.scope, payload.modules)
+    # headers/cookies are handed to the runner in-memory only — never stored.
+    scan_manager.submit(
+        scan_id, payload.target, payload.scope, payload.modules,
+        auth_headers=payload.headers or None, auth_cookies=payload.cookies or None,
+    )
     return ScanCreatedResponse(scan_id=scan_id, status=ScanStatus.QUEUED)
 
 

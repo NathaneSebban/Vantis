@@ -40,6 +40,10 @@ class ScanCreate(BaseModel):
     target: str = Field(..., description="Target URL, domain or IP, e.g. https://example.com")
     scope: list[str] = Field(default_factory=list, description="Additional in-scope hosts/domains/CIDRs")
     modules: list[str] = Field(default_factory=lambda: ["recon", "web", "cve"])
+    # Authenticated scanning. These are used in-memory for the run only and are
+    # NEVER written to the database (they are credentials).
+    headers: dict[str, str] = Field(default_factory=dict, description="Extra request headers (e.g. Authorization)")
+    cookies: dict[str, str] = Field(default_factory=dict, description="Session cookies")
     authorized: bool = Field(
         ...,
         description=(

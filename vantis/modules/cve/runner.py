@@ -26,5 +26,5 @@ class CveTemplateModule(ScanModule):
             self.log(f"No templates found in {TEMPLATES_DIR}")
             return []
 
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         return run_templates(str(self.ctx.target), templates, client)

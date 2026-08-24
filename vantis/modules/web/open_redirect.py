@@ -28,7 +28,7 @@ class OpenRedirectModule(ScanModule):
     description = "Detect open redirects via off-site canary in redirect parameters"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         target = self.ctx.target
 
         # Prefer redirect-named params among discovered points; always also test

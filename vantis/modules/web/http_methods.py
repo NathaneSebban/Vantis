@@ -21,7 +21,7 @@ class HttpMethodsModule(ScanModule):
     description = "Report dangerous HTTP methods advertised/accepted by the server"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         url = str(self.ctx.target)
         findings: list[Finding] = []
 

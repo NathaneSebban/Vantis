@@ -27,7 +27,7 @@ class XssCheckModule(ScanModule):
     description = "Detect reflected XSS via harmless canary-string reflection testing"
 
     def run(self) -> list[Finding]:
-        client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
+        client = self.ctx.new_http_client()
         target = self.ctx.target
 
         # Test real injection points found by the crawler (target params, links,
