@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import wordmark from "./assets/wordmark.png";
+import { Footer } from "./components/Footer";
 import { Landing } from "./pages/Landing";
 import { ScanLive } from "./pages/ScanLive";
 import { ScanReport } from "./pages/ScanReport";
@@ -33,9 +34,9 @@ function Nav() {
 
 export default function App() {
   return (
-    <div className="min-h-full">
+    <div className="flex min-h-full flex-col">
       <Nav />
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/history" element={<ScanHistory />} />
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="*" element={<p className="text-[#635d80]">Page not found.</p>} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }
