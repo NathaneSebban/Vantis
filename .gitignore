@@ -9,3 +9,12 @@ venv/
 *.report.html
 .pytest_cache/
 .DS_Store
+
+# API
+*.db
+.env
+
+# Frontend
+node_modules/
+web/dist/
+web/node_modules/

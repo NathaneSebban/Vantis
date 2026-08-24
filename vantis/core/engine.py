@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import traceback
+from typing import Any, Callable, Optional
 from pathlib import Path
 
 from vantis.core.plugin_base import ModuleContext, ScanModule
@@ -17,6 +18,22 @@ from vantis.core.target import Target
 
 class AuthorizationError(RuntimeError):
     """Raised when a scan is attempted without explicit authorization."""
+
+
+class ScanControlSignal(Exception):
+    """Raised *by a progress callback* to intentionally interrupt a running
+    scan (e.g. the API cancelling a job). Unlike ordinary observer errors —
+    which are swallowed so a broken observer can never abort a scan — this
+    signal is allowed to propagate out of Engine.run()."""
+
+
+# A progress callback receives (event_type, payload) at orchestration
+# boundaries. event_type is one of:
+#   "module_start" -> {"module", "category", "index", "total"}
+#   "finding"      -> {"module", "finding": Finding}
+#   "module_end"   -> {"module", "count", "index", "total"}
+#   "scan_end"     -> {"total_findings"}
+ProgressCallback = Callable[[str, dict[str, Any]], None]
 
 
 class Engine:
@@ -94,7 +111,29 @@ class Engine:
 
     # -- Run ---------------------------------------------------
 
-    def run(self) -> Report:
+    def _emit(self, callback: Optional[ProgressCallback], event: str, payload: dict) -> None:
+        """Notify an optional observer of a progress event.
+
+        Observer errors are swallowed so a broken observer can never abort a
+        scan — the one exception is ScanControlSignal, which is a deliberate
+        request (e.g. cancellation) and is allowed to propagate."""
+        if callback is None:
+            return
+        try:
+            callback(event, payload)
+        except ScanControlSignal:
+            raise
+        except Exception as e:  # noqa: BLE001
+            if self.verbose:
+                print(f"[!] progress callback error: {e}")
+
+    def run(self, progress_callback: Optional[ProgressCallback] = None) -> Report:
+        """Run all discovered modules and aggregate their findings.
+
+        progress_callback is optional and purely observational: when omitted
+        (the CLI's path) behaviour is identical to before. When provided (the
+        API's path) it receives orchestration events, enabling live progress
+        and WebSocket streaming without duplicating this loop elsewhere."""
         if not self._modules:
             self.discover_modules()
 
@@ -102,27 +141,50 @@ class Engine:
         # for later web/cve modules), then web, then cve.
         order = {"recon": 0, "web": 1, "cve": 2}
         modules = sorted(self._modules, key=lambda m: order.get(m.category, 99))
+        total = len(modules)
 
-        for module_cls in modules:
+        for index, module_cls in enumerate(modules, start=1):
             print(f"[*] Running {module_cls.name} ({module_cls.category})...")
+            self._emit(progress_callback, "module_start", {
+                "module": module_cls.name,
+                "category": module_cls.category,
+                "index": index,
+                "total": total,
+            })
             try:
                 instance = module_cls(self.ctx)
                 findings = instance.run() or []
                 for f in findings:
                     self.report.add(f)
+                    self._emit(progress_callback, "finding", {"module": module_cls.name, "finding": f})
                 print(f"    -> {len(findings)} finding(s)")
+                self._emit(progress_callback, "module_end", {
+                    "module": module_cls.name,
+                    "count": len(findings),
+                    "index": index,
+                    "total": total,
+                })
+            except ScanControlSignal:
+                raise
             except Exception as e:  # noqa: BLE001
                 print(f"    -> module crashed: {e}")
                 if self.verbose:
                     traceback.print_exc()
-                self.report.add(
-                    Finding(
-                        module=module_cls.name,
-                        title="Module execution error",
-                        severity=Severity.INFO,
-                        target=str(self.target),
-                        description=str(e),
-                    )
+                crash = Finding(
+                    module=module_cls.name,
+                    title="Module execution error",
+                    severity=Severity.INFO,
+                    target=str(self.target),
+                    description=str(e),
                 )
+                self.report.add(crash)
+                self._emit(progress_callback, "finding", {"module": module_cls.name, "finding": crash})
+                self._emit(progress_callback, "module_end", {
+                    "module": module_cls.name,
+                    "count": 1,
+                    "index": index,
+                    "total": total,
+                })
 
+        self._emit(progress_callback, "scan_end", {"total_findings": len(self.report.findings)})
         return self.report
