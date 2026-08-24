@@ -1,5 +1,4 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import logoMark from "./assets/logo.png";
 import wordmark from "./assets/wordmark.png";
 import { Landing } from "./pages/Landing";
 import { ScanLive } from "./pages/ScanLive";
@@ -16,13 +15,8 @@ function Nav() {
   return (
     <header className="sticky top-0 z-30 border-b border-[#ece8f8] bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-2.5">
-        <NavLink to="/" className="flex items-center gap-2.5">
-          <img
-            src={logoMark}
-            alt="Vantis"
-            className="h-11 w-11 object-contain drop-shadow-[0_6px_16px_rgba(76,47,191,0.35)] transition group-hover:scale-105"
-          />
-          <img src={wordmark} alt="Vantis" className="h-5 object-contain" />
+        <NavLink to="/" className="flex items-center">
+          <img src={wordmark} alt="Vantis" className="h-6 object-contain" />
         </NavLink>
         <nav className="flex items-center gap-1">
           <NavLink to="/" end className={linkClass}>

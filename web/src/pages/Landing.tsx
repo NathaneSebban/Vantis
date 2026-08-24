@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import logoMark from "../assets/logo.png";
 import wordmark from "../assets/wordmark.png";
 import { ModulePicker } from "../components/ModulePicker";
 import { DisclaimerModal } from "../components/DisclaimerModal";
@@ -59,18 +58,18 @@ export function Landing() {
   return (
     <div className="mx-auto max-w-4xl">
       {/* ---- Hero ---- */}
-      <section className="relative flex flex-col items-center pt-6 text-center">
+      <section className="relative flex flex-col items-center pt-10 text-center">
         <div className="relative animate-reveal">
-          {/* radar rings echoing the logo */}
+          {/* soft violet halo drifting behind the wordmark */}
           <span className="pointer-events-none absolute inset-0 -z-10 grid place-items-center">
-            <span className="h-40 w-40 rounded-full border border-violetx/20 animate-radar" />
-            <span className="absolute h-40 w-40 rounded-full border border-violetx/20 animate-radar [animation-delay:1s]" />
-            <span className="absolute h-40 w-40 rounded-full border border-violetx/20 animate-radar [animation-delay:2s]" />
+            <span className="h-40 w-72 rounded-full bg-violetx/20 blur-3xl animate-pulseglow" />
           </span>
-          <img src={logoMark} alt="Vantis" className="h-28 w-28 animate-float object-contain drop-shadow-[0_18px_40px_rgba(76,47,191,0.45)]" />
+          <img
+            src={wordmark}
+            alt="Vantis"
+            className="h-16 animate-float object-contain drop-shadow-[0_14px_36px_rgba(76,47,191,0.4)] sm:h-20"
+          />
         </div>
-
-        <img src={wordmark} alt="Vantis" className="mt-5 h-9 animate-reveal object-contain [animation-delay:0.1s]" />
 
         <h1 className="mt-6 max-w-2xl animate-reveal text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-violetx-ink [animation-delay:0.15s] sm:text-5xl">
           Find what attackers find —{" "}
