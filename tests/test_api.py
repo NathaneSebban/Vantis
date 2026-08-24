@@ -26,7 +26,7 @@ class FakeEngine:
     """Stand-in for vantis.core.engine.Engine that emits scripted events."""
 
     def __init__(self, target, categories=None, http_timeout=10.0, rate_limit_delay=0.3,
-                 verbose=False, auth_headers=None, auth_cookies=None):
+                 verbose=False, auth_headers=None, auth_cookies=None, max_workers=1):
         self.target = target
         self.categories = categories or []
 

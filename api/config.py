@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # How many scans may run concurrently in the in-memory worker pool.
     max_concurrent_scans: int = 2
 
+    # Concurrent workers for web/cve modules within a single scan (speed).
+    scan_workers: int = 4
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

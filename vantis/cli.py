@@ -39,6 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--cookie", "-C", action="append", default=[], metavar="'name=value'",
         help="Session cookie for authenticated scanning (repeatable), e.g. -C 'session=abc123'",
     )
+    parser.add_argument("--workers", type=int, default=1,
+                        help="Concurrent workers for web/cve modules (default 1 = sequential). Higher is faster.")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose module logging")
     parser.add_argument(
         "--yes-i-am-authorized",
@@ -89,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         rate_limit_delay=args.delay,
         auth_headers=auth_headers or None,
         auth_cookies=auth_cookies or None,
+        max_workers=args.workers,
     )
     report = engine.run()
 

@@ -199,6 +199,7 @@ class ScanManager:
                 rate_limit_delay=settings.rate_limit_delay,
                 auth_headers=auth_headers or None,
                 auth_cookies=auth_cookies or None,
+                max_workers=settings.scan_workers,
             )
             engine.run(progress_callback=progress)
 

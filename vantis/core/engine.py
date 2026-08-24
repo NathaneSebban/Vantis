@@ -46,10 +46,12 @@ class Engine:
         rate_limit_delay: float = 0.3,
         auth_headers: dict | None = None,
         auth_cookies: dict | None = None,
+        max_workers: int = 1,
     ):
         self.target = target
         self.categories = categories or ["recon", "web", "cve"]
         self.verbose = verbose
+        self.max_workers = max_workers
         self.ctx = ModuleContext(
             target=target,
             http_timeout=http_timeout,
@@ -131,64 +133,78 @@ class Engine:
             if self.verbose:
                 print(f"[!] progress callback error: {e}")
 
-    def run(self, progress_callback: Optional[ProgressCallback] = None) -> Report:
+    def _run_module(self, module_cls, index, total, callback, lock) -> None:
+        """Execute one module. The module's own work (network I/O) runs outside
+        the lock — that's where concurrency pays off — while report mutation and
+        observer emission happen under `lock`, so the DB/WebSocket observer stays
+        single-threaded and safe even when modules run in parallel."""
+        with lock:
+            print(f"[*] Running {module_cls.name} ({module_cls.category})...")
+            self._emit(callback, "module_start", {
+                "module": module_cls.name, "category": module_cls.category,
+                "index": index, "total": total,
+            })
+        try:
+            findings = module_cls(self.ctx).run() or []
+        except ScanControlSignal:
+            raise
+        except Exception as e:  # noqa: BLE001
+            print(f"    -> module crashed: {e}")
+            if self.verbose:
+                traceback.print_exc()
+            findings = [Finding(
+                module=module_cls.name, title="Module execution error",
+                severity=Severity.INFO, target=str(self.target), description=str(e),
+            )]
+        with lock:
+            for f in findings:
+                self.report.add(f)
+                self._emit(callback, "finding", {"module": module_cls.name, "finding": f})
+            print(f"    -> {len(findings)} finding(s)")
+            self._emit(callback, "module_end", {
+                "module": module_cls.name, "count": len(findings),
+                "index": index, "total": total,
+            })
+
+    def run(self, progress_callback: Optional[ProgressCallback] = None,
+            max_workers: Optional[int] = None) -> Report:
         """Run all discovered modules and aggregate their findings.
 
         progress_callback is optional and purely observational: when omitted
-        (the CLI's path) behaviour is identical to before. When provided (the
-        API's path) it receives orchestration events, enabling live progress
-        and WebSocket streaming without duplicating this loop elsewhere."""
+        (the CLI's path) behaviour is identical to before.
+
+        max_workers > 1 runs the modules WITHIN the web and cve categories
+        concurrently for speed. recon stays sequential because its modules have
+        an ordering dependency (subdomain-takeover consumes subdomain-enum's
+        results via ctx.extra_hosts). Categories always run in order
+        (recon -> web -> cve). Default (1) is fully sequential."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
         if not self._modules:
             self.discover_modules()
 
-        # Run in a stable order: recon first (it can populate ctx.extra_hosts
-        # for later web/cve modules), then web, then cve.
+        workers = max_workers or self.max_workers
         order = {"recon": 0, "web": 1, "cve": 2}
         modules = sorted(self._modules, key=lambda m: order.get(m.category, 99))
         total = len(modules)
+        lock = threading.Lock()
+        counter = iter(range(1, total + 1))
 
-        for index, module_cls in enumerate(modules, start=1):
-            print(f"[*] Running {module_cls.name} ({module_cls.category})...")
-            self._emit(progress_callback, "module_start", {
-                "module": module_cls.name,
-                "category": module_cls.category,
-                "index": index,
-                "total": total,
-            })
-            try:
-                instance = module_cls(self.ctx)
-                findings = instance.run() or []
-                for f in findings:
-                    self.report.add(f)
-                    self._emit(progress_callback, "finding", {"module": module_cls.name, "finding": f})
-                print(f"    -> {len(findings)} finding(s)")
-                self._emit(progress_callback, "module_end", {
-                    "module": module_cls.name,
-                    "count": len(findings),
-                    "index": index,
-                    "total": total,
-                })
-            except ScanControlSignal:
-                raise
-            except Exception as e:  # noqa: BLE001
-                print(f"    -> module crashed: {e}")
-                if self.verbose:
-                    traceback.print_exc()
-                crash = Finding(
-                    module=module_cls.name,
-                    title="Module execution error",
-                    severity=Severity.INFO,
-                    target=str(self.target),
-                    description=str(e),
-                )
-                self.report.add(crash)
-                self._emit(progress_callback, "finding", {"module": module_cls.name, "finding": crash})
-                self._emit(progress_callback, "module_end", {
-                    "module": module_cls.name,
-                    "count": 1,
-                    "index": index,
-                    "total": total,
-                })
+        # Preserve category order; parallelize only within web/cve.
+        for category in sorted({m.category for m in modules}, key=lambda c: order.get(c, 99)):
+            cat_modules = [m for m in modules if m.category == category]
+            indexed = [(next(counter), m) for m in cat_modules]
+
+            if workers > 1 and category != "recon" and len(indexed) > 1:
+                with ThreadPoolExecutor(max_workers=workers) as ex:
+                    futures = [ex.submit(self._run_module, m, idx, total, progress_callback, lock)
+                               for idx, m in indexed]
+                    for fut in futures:
+                        fut.result()  # propagates ScanControlSignal / unexpected errors
+            else:
+                for idx, m in indexed:
+                    self._run_module(m, idx, total, progress_callback, lock)
 
         self._emit(progress_callback, "scan_end", {"total_findings": len(self.report.findings)})
         return self.report
