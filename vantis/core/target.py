@@ -57,6 +57,14 @@ class Target:
         self.port = parsed.port
         self.base_url = f"{self.scheme}://{host}" + (f":{self.port}" if self.port else "")
 
+        # Preserve the path and query the user actually pointed at, so
+        # parameter-testing modules (xss, sqli) can probe the real endpoint —
+        # not just the origin. str(target) stays the origin for modules that
+        # build paths relative to the web root (exposed-paths, cve templates).
+        self.path = parsed.path or ""
+        self.query = parsed.query or ""
+        self.url = self.base_url + self.path + (f"?{self.query}" if self.query else "")
+
         if not self.scope:
             self.scope = [host]
 

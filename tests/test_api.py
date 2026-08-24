@@ -60,10 +60,10 @@ def client():
         yield c
 
 
-def _wait_for_status(client, scan_id, statuses, timeout=5.0):
+def _wait_for_status(client, scan_id, statuses, timeout=5.0, headers=None):
     deadline = time.time() + timeout
     while time.time() < deadline:
-        r = client.get(f"/api/scans/{scan_id}")
+        r = client.get(f"/api/scans/{scan_id}", headers=headers or {})
         if r.status_code == 200 and r.json()["status"] in statuses:
             return r.json()
         time.sleep(0.05)
@@ -173,6 +173,11 @@ def test_api_key_enforced_when_configured(client, monkeypatch):
     assert client.get("/api/scans").status_code == 401
     assert client.get("/api/scans", headers={"X-API-Key": "s3cret"}).status_code == 200
 
+    # Let the (fake) engine finish before teardown restores the real Engine, so
+    # the background worker never runs a real scan.
+    scan_id = ok.json()["scan_id"]
+    _wait_for_status(client, scan_id, {"completed"}, headers={"X-API-Key": "s3cret"})
+
 
 def test_private_target_blocked_when_enabled(client, monkeypatch):
     monkeypatch.setattr(get_settings(), "block_private_targets", True)
@@ -184,6 +189,8 @@ def test_private_target_blocked_when_enabled(client, monkeypatch):
     # A public target is still accepted.
     ok = client.post("/api/scans", json={"target": "https://example.com", "authorized": True, "modules": ["web"]})
     assert ok.status_code == 202
+    # Drain the fake scan before teardown (avoid a real background scan).
+    _wait_for_status(client, ok.json()["scan_id"], {"completed"})
 
 
 # -- live WebSocket ---------------------------------------------------

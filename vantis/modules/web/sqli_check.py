@@ -17,10 +17,10 @@ exists" into "exploit it", which isn't something this tool does.
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from vantis.core.plugin_base import ScanModule
 from vantis.core.report import Finding, Severity
+from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 from vantis.utils.http_client import HttpClient
 
 DEFAULT_PARAMS = ["id", "search", "q", "category", "product", "user", "page"]
@@ -44,27 +44,27 @@ class SqliCheckModule(ScanModule):
     category = "web"
     description = "Non-destructive SQL injection detection (error-based + boolean differential)"
 
-    def _url_with_param(self, base_url: str, param: str, value: str) -> str:
-        parsed = urlparse(base_url)
-        qs = parse_qs(parsed.query)
-        qs[param] = [value]
-        return urlunparse(parsed._replace(query=urlencode(qs, doseq=True)))
-
     def run(self) -> list[Finding]:
         client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
-        base_url = str(self.ctx.target)
-        parsed = urlparse(base_url)
-        existing_params = list(parse_qs(parsed.query).keys())
-        params_to_test = existing_params or DEFAULT_PARAMS
+        target = self.ctx.target
+        base_url = str(target)
+
+        # Test real injection points discovered by the crawler; fall back to a
+        # default parameter list against the URL the user pointed at.
+        points = discover_injection_points(client, target, self.log)
+        if not points:
+            points = [InjectionPoint(url=target.url, param=p, source="default") for p in DEFAULT_PARAMS]
 
         findings: list[Finding] = []
 
-        for param in params_to_test[:15]:
+        for point in points[:25]:
+            param = point.param
+            point_url = point.url
             # Benign baseline, requested twice: (1) confirms which error strings
             # are ALREADY on the page regardless of injection, and (2) measures
             # the page's natural response-length noise (dynamic content: ads,
             # tokens, timestamps) so we don't mistake that noise for injection.
-            benign_url = self._url_with_param(base_url, param, "1")
+            benign_url = set_param(point_url, param, "1")
             base1 = client.get(benign_url)
             base2 = client.get(benign_url)
             if not (base1 and base2 and base1.status_code == 200 and base2.status_code == 200):
@@ -74,7 +74,7 @@ class SqliCheckModule(ScanModule):
             baseline_len = max(len(base1_text), len(base2_text))
 
             # -- Error-based check (only NEW errors count) --
-            probe_url = self._url_with_param(base_url, param, "'")
+            probe_url = set_param(point_url, param, "'")
             resp = client.get(probe_url)
             if resp and resp.text:
                 for (raw_pattern, dbms), regex in zip(ERROR_SIGNATURES, ERROR_RE):
@@ -102,8 +102,8 @@ class SqliCheckModule(ScanModule):
                         break  # one match per param is enough signal
 
             # -- Boolean-based differential check (noise-aware) --
-            true_url = self._url_with_param(base_url, param, "1 OR 1=1")
-            false_url = self._url_with_param(base_url, param, "1 AND 1=2")
+            true_url = set_param(point_url, param, "1 OR 1=1")
+            false_url = set_param(point_url, param, "1 AND 1=2")
             resp_true = client.get(true_url)
             resp_false = client.get(false_url)
 

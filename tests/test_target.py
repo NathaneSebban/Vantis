@@ -10,6 +10,24 @@ def test_basic_target_parsing():
     assert t.base_url == "https://example.com"
 
 
+def test_target_preserves_path_and_query():
+    t = Target(raw="https://example.com/search?q=hello&page=2")
+    # str()/base_url stay the origin (for web-root-relative modules)...
+    assert str(t) == "https://example.com"
+    assert t.base_url == "https://example.com"
+    # ...but the full URL, path and query are kept for parameter testing.
+    assert t.path == "/search"
+    assert t.query == "q=hello&page=2"
+    assert t.url == "https://example.com/search?q=hello&page=2"
+
+
+def test_bare_domain_full_url_is_origin():
+    t = Target(raw="example.com")
+    assert t.url == "http://example.com"
+    assert t.path == ""
+    assert t.query == ""
+
+
 def test_bare_domain_defaults_to_http():
     t = Target(raw="example.com")
     assert t.scheme == "http"

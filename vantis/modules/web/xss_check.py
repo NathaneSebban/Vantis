@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import re
 import uuid
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 from vantis.core.plugin_base import ScanModule
 from vantis.core.report import Finding, Severity
+from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 from vantis.utils.http_client import HttpClient
 
 DEFAULT_PARAMS = ["q", "search", "id", "name", "query", "keyword", "page", "url", "redirect"]
@@ -26,28 +26,24 @@ class XssCheckModule(ScanModule):
     category = "web"
     description = "Detect reflected XSS via harmless canary-string reflection testing"
 
-    def _build_test_url(self, base_url: str, param: str, canary: str) -> str:
-        parsed = urlparse(base_url)
-        qs = parse_qs(parsed.query)
-        qs[param] = [canary]
-        new_query = urlencode(qs, doseq=True)
-        return urlunparse(parsed._replace(query=new_query))
-
     def run(self) -> list[Finding]:
         client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
-        base_url = str(self.ctx.target)
+        target = self.ctx.target
 
-        # Discover existing query params on the landing page, fall back to a default list
-        parsed = urlparse(base_url)
-        existing_params = list(parse_qs(parsed.query).keys())
-        params_to_test = existing_params or DEFAULT_PARAMS
+        # Test real injection points found by the crawler (target params, links,
+        # GET forms). If nothing is discovered, fall back to probing a default
+        # parameter list against the exact URL the user pointed at.
+        points = discover_injection_points(client, target, self.log)
+        if not points:
+            points = [InjectionPoint(url=target.url, param=p, source="default") for p in DEFAULT_PARAMS]
 
         findings: list[Finding] = []
 
-        for param in params_to_test[:15]:  # cap for politeness
+        for point in points[:25]:  # cap for politeness
+            param = point.param
             canary = f"vs{uuid.uuid4().hex[:8]}"
             payload = f"\"'><svg id={canary}>"
-            test_url = self._build_test_url(base_url, param, payload)
+            test_url = set_param(point.url, param, payload)
 
             resp = client.get(test_url)
             if resp is None or not resp.text:
@@ -69,7 +65,7 @@ class XssCheckModule(ScanModule):
                         module=self.name,
                         title=f"Reflected XSS in parameter '{param}'",
                         severity=Severity.HIGH,
-                        target=base_url,
+                        target=str(self.ctx.target),
                         matched_at=test_url,
                         evidence=f"Injected marker reflected unescaped (Content-Type: {content_type or 'unset'}): <svg id={canary}>",
                         description=(
@@ -90,7 +86,7 @@ class XssCheckModule(ScanModule):
                         module=self.name,
                         title=f"Parameter '{param}' reflected unescaped in non-HTML response",
                         severity=Severity.INFO,
-                        target=base_url,
+                        target=str(self.ctx.target),
                         matched_at=test_url,
                         evidence=f"Reflected unescaped but Content-Type is '{content_type or 'unset'}', not HTML.",
                         description="Input reflects without encoding, but the response is not served as HTML, so it does not execute as XSS here. Re-check if the endpoint can return HTML.",
@@ -103,7 +99,7 @@ class XssCheckModule(ScanModule):
                         module=self.name,
                         title=f"Parameter '{param}' reflected but appears encoded",
                         severity=Severity.INFO,
-                        target=base_url,
+                        target=str(self.ctx.target),
                         matched_at=test_url,
                         description="Input is reflected but HTML metacharacters seem encoded — likely not exploitable, but worth a manual look at other contexts (JS strings, attributes).",
                     )

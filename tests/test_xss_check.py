@@ -44,6 +44,27 @@ def test_unescaped_reflection_in_json_is_not_xss(monkeypatch):
 
 
 @responses.activate
+def test_discovered_link_param_is_tested_end_to_end():
+    # The landing page links to /search?q=... ; the crawler must find that
+    # parameter and the module must flag the reflected XSS on that real URL —
+    # WITHOUT relying on the default parameter list.
+    def cb(request):
+        path = urlparse(request.url).path
+        if path in ("", "/"):
+            return (200, {"Content-Type": "text/html"}, '<html><a href="/search?q=x">go</a></html>')
+        if path == "/search":
+            return (200, {"Content-Type": "text/html"}, f"<html>Results: {_reflected_value(request)}</html>")
+        return (200, {"Content-Type": "text/html"}, "<html>other</html>")
+
+    responses.add_callback(responses.GET, re.compile(r"http://example\.com/.*"), callback=cb)
+    ctx = ModuleContext(target=Target("http://example.com"), rate_limit_delay=0)
+    findings = XssCheckModule(ctx).run()
+    xss = [f for f in findings if f.severity.value == "high"]
+    assert xss, "expected a reflected-XSS finding on the discovered /search?q= endpoint"
+    assert any("/search?q=" in f.matched_at for f in xss)
+
+
+@responses.activate
 def test_escaped_reflection_is_info(monkeypatch):
     def cb(request):
         return (200, {"Content-Type": "text/html"}, f"<html>{html.escape(_reflected_value(request))}</html>")
