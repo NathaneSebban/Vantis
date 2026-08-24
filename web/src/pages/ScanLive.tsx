@@ -40,9 +40,6 @@ export function ScanLive() {
           <h1 className="font-mono text-xl text-violetx-ink">{scan?.target ?? "…"}</h1>
           <div className="mt-2 flex items-center gap-2">
             {status && <StatusBadge status={status} />}
-            <span className="text-xs text-[#8b84a3]">
-              {live.connected ? "● live stream" : "○ offline (polling)"}
-            </span>
           </div>
         </div>
         {done && (

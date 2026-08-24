@@ -37,7 +37,13 @@ def test_sequential_runs_all_modules():
 def test_concurrent_modules_overlap_and_all_findings_collected():
     log = []
     modules = [_make_module(n, log) for n in ("a", "b", "c")]
-    report = _engine(modules, max_workers=3).run()
+    dones = []
+
+    def cb(evt, payload):
+        if evt == "module_end":
+            dones.append(payload.get("done"))
+
+    report = _engine(modules, max_workers=3).run(progress_callback=cb)
 
     # All three findings collected (thread-safe report mutation).
     assert {f.title for f in report.findings} == {"finding-a", "finding-b", "finding-c"}
@@ -46,6 +52,10 @@ def test_concurrent_modules_overlap_and_all_findings_collected():
     starts = sorted(t for _n, ev, t in log if ev == "start")
     ends = sorted(t for _n, ev, t in log if ev == "end")
     assert starts[1] < ends[0], "modules did not run concurrently"
+
+    # 'done' is a monotonic completed-count reaching the total (progress never
+    # regresses to total-1, even when modules finish out of index order).
+    assert dones == [1, 2, 3]
 
 
 def test_progress_callback_is_serialized():

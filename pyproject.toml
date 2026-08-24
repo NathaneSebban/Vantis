@@ -40,3 +40,6 @@ vantis = "vantis.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["vantis*"]
+
+[tool.setuptools.package-data]
+vantis = ["assets/*.png"]

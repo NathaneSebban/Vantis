@@ -158,10 +158,13 @@ class Report:
                 "(or install Vantis with the 'pdf' extra: pip install -e '.[pdf]')."
             ) from e
 
+        # Palette matching the web app (light theme, deep-violet accents).
+        VIOLET, INK, MUTED, FAINT, LINE = (76, 47, 191), (36, 26, 82), (99, 93, 128), (150, 145, 172), (230, 225, 245)
         sev_colors = {
-            "critical": (127, 29, 29), "high": (185, 28, 28), "medium": (180, 83, 9),
-            "low": (29, 78, 216), "info": (55, 65, 81),
+            "critical": (168, 15, 34), "high": (220, 38, 38), "medium": (232, 89, 12),
+            "low": (79, 70, 229), "info": (100, 116, 139),
         }
+        assets = Path(__file__).resolve().parent.parent / "assets"
 
         def s(text: str) -> str:
             # Core PDF fonts are latin-1; replace anything outside it so a
@@ -169,62 +172,108 @@ class Report:
             return (text or "").encode("latin-1", "replace").decode("latin-1")
 
         pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_auto_page_break(auto=True, margin=16)
         pdf.add_page()
+        W, ML = pdf.w, 15
 
-        # Header
-        pdf.set_font("Helvetica", "B", 16)
-        pdf.cell(0, 10, s(f"Vantis Report - {self.target}"), new_x="LMARGIN", new_y="NEXT")
+        def rrect(x, y, w, h, r=2.0):
+            try:
+                pdf.rect(x, y, w, h, round_corners=True, corner_radius=r, style="F")
+            except TypeError:  # older fpdf2 without rounded corners
+                pdf.rect(x, y, w, h, style="F")
+
+        # ---- Header: real logo + wordmark ----
+        try:
+            pdf.image(str(assets / "logo.png"), x=ML, y=12, h=15)
+            pdf.image(str(assets / "wordmark.png"), x=ML + 17, y=16.5, h=6.5)
+        except Exception:  # noqa: BLE001 - never fail export over the logo
+            pass
+        pdf.set_xy(ML, 30)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*VIOLET)
+        pdf.cell(0, 4, s("SECURITY REPORT"), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_xy(ML, 34.5)
+        pdf.set_font("Helvetica", "B", 17)
+        pdf.set_text_color(*INK)
+        pdf.cell(0, 9, s(self.target), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_xy(ML, 44)
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(100, 100, 100)
-        pdf.cell(0, 5, s(f"Generated {datetime.now(timezone.utc).isoformat()}  -  {len(self.findings)} findings"),
-                 new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*MUTED)
+        gen = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        pdf.cell(0, 5, s(f"Generated {gen}   -   {len(self.findings)} findings"), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_draw_color(*VIOLET)
+        pdf.set_line_width(0.6)
+        pdf.line(ML, 52, W - ML, 52)
 
-        # Severity summary
+        # ---- Severity summary pills ----
         counts = {sev.value: 0 for sev in Severity}
         for f in self.findings:
             counts[f.severity.value] += 1
-        pdf.ln(3)
-        pdf.set_font("Helvetica", "B", 10)
+        gap, y = 4, 58
+        pill_w = (W - 2 * ML - 4 * gap) / 5
+        x = ML
         for sev in ["critical", "high", "medium", "low", "info"]:
-            r, g, b = sev_colors[sev]
-            pdf.set_fill_color(r, g, b)
+            pdf.set_fill_color(*sev_colors[sev])
+            rrect(x, y, pill_w, 15, r=2.2)
             pdf.set_text_color(255, 255, 255)
-            pdf.cell(34, 7, s(f"{sev.upper()}: {counts[sev]}"), align="C", fill=True)
-            pdf.cell(2, 7, "", new_x="RIGHT")
-        pdf.ln(11)
+            pdf.set_xy(x, y + 2.2)
+            pdf.set_font("Helvetica", "B", 14)
+            pdf.cell(pill_w, 7, str(counts[sev]), align="C")
+            pdf.set_xy(x, y + 9.2)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.cell(pill_w, 4, s(sev.upper()), align="C")
+            x += pill_w + gap
+        pdf.set_y(y + 15 + 8)
 
-        # Findings
-        for f in self.sorted_findings():
-            r, g, b = sev_colors[f.severity.value]
-            pdf.set_fill_color(r, g, b)
-            pdf.set_text_color(255, 255, 255)
+        # ---- Findings ----
+        pdf.set_x(ML)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*FAINT)
+        pdf.cell(0, 5, s("FINDINGS"), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+
+        def field(label: str, value: str) -> None:
+            if not value:
+                return
+            pdf.set_x(ML + 2)
             pdf.set_font("Helvetica", "B", 8)
-            pdf.cell(20, 6, s(f.severity.value.upper()), align="C", fill=True)
-            pdf.set_text_color(15, 23, 42)
-            pdf.set_font("Helvetica", "B", 11)
-            pdf.cell(3, 6, "", new_x="RIGHT")
-            pdf.multi_cell(0, 6, s(f.title), new_x="LMARGIN", new_y="NEXT")
-
+            pdf.set_text_color(*VIOLET)
+            pdf.cell(24, 5, s(label), new_x="RIGHT", new_y="TOP")
             pdf.set_font("Helvetica", "", 9)
-            pdf.set_text_color(80, 80, 80)
+            pdf.set_text_color(70, 66, 90)
+            pdf.multi_cell(W - 2 * ML - 26, 5, s(value), new_x="LMARGIN", new_y="NEXT")
 
-            def field(label: str, value: str) -> None:
-                if not value:
-                    return
-                pdf.set_font("Helvetica", "B", 9)
-                pdf.cell(24, 5, s(label), new_x="RIGHT")
-                pdf.set_font("Helvetica", "", 9)
-                pdf.multi_cell(0, 5, s(value), new_x="LMARGIN", new_y="NEXT")
+        for f in self.sorted_findings():
+            col = sev_colors[f.severity.value]
+            y0 = pdf.get_y()
+            # severity pill
+            pw = 19
+            pdf.set_fill_color(*col)
+            rrect(ML, y0, pw, 5.6, r=1.3)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_xy(ML, y0 + 0.7)
+            pdf.cell(pw, 4.2, s(f.severity.value.upper()), align="C")
+            # title
+            pdf.set_xy(ML + pw + 3, y0 - 0.3)
+            pdf.set_text_color(*INK)
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.multi_cell(W - 2 * ML - pw - 3, 5.6, s(f.title), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
 
-            field("Module:", f.module)
-            field("Location:", f.matched_at or f.target)
-            field("Description:", f.description)
-            field("Evidence:", f.evidence)
-            field("Remediation:", f.remediation)
+            field("Module", f.module)
+            field("Location", f.matched_at or f.target)
+            field("Description", f.description)
+            field("Evidence", f.evidence)
+            field("Remediation", f.remediation)
             if f.references:
-                field("References:", ", ".join(f.references))
-            pdf.ln(4)
+                field("References", ", ".join(f.references))
+
+            pdf.ln(2.5)
+            pdf.set_draw_color(*LINE)
+            pdf.set_line_width(0.2)
+            pdf.line(ML, pdf.get_y(), W - ML, pdf.get_y())
+            pdf.ln(3.5)
 
         pdf.output(str(path))
 

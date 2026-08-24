@@ -15,17 +15,26 @@ export function SeverityChart({ counts }: { counts: SeverityCounts }) {
   })).filter((d) => d.value > 0);
 
   if (data.length === 0) {
-    return <p className="text-sm text-zinc-500">No findings to visualize.</p>;
+    return <p className="text-sm text-[#8b84a3]">No findings to visualize.</p>;
   }
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(120, data.length * 44)}>
       <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
-        <XAxis type="number" allowDecimals={false} stroke="#71717a" fontSize={12} />
-        <YAxis type="category" dataKey="label" width={72} stroke="#a1a1aa" fontSize={12} />
+        <XAxis type="number" allowDecimals={false} stroke="#9691ac" fontSize={12} />
+        <YAxis type="category" dataKey="label" width={72} stroke="#635d80" fontSize={12} />
         <Tooltip
-          cursor={{ fill: "rgba(255,255,255,0.04)" }}
-          contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, color: "#e4e4e7" }}
+          cursor={{ fill: "rgba(76,47,191,0.06)" }}
+          formatter={(value: number) => [`${value} finding${value === 1 ? "" : "s"}`, ""]}
+          contentStyle={{
+            background: "#ffffff",
+            border: "1px solid #e6e1f5",
+            borderRadius: 10,
+            boxShadow: "0 12px 30px -12px rgba(76,47,191,0.35)",
+            padding: "8px 12px",
+          }}
+          labelStyle={{ color: "#241a52", fontWeight: 700, marginBottom: 2 }}
+          itemStyle={{ color: "#4c2fbf", fontWeight: 600 }}
         />
         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
           {data.map((d) => (

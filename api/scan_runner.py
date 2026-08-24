@@ -200,7 +200,7 @@ class ScanManager:
             elif event == "module_end":
                 scan = db.get(ScanRow, scan_id)
                 if scan:
-                    scan.modules_done = payload["index"]
+                    scan.modules_done = payload.get("done", payload["index"])
                     safe_commit()
                 self._push_ws(scan_id, {"type": "module_end", **_public(payload)})
 

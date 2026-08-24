@@ -84,7 +84,7 @@ export interface ScanCreatedResponse {
 export type LiveEvent =
   | { type: "status"; status: ScanStatus; error?: string }
   | { type: "module_start"; module: string; category: string; index: number; total: number }
-  | { type: "module_end"; module: string; count: number; index: number; total: number }
+  | { type: "module_end"; module: string; count: number; index: number; done?: number; total: number }
   | { type: "finding"; finding: Finding }
   | { type: "scan_end"; total_findings: number };
 

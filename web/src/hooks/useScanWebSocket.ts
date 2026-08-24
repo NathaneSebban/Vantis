@@ -57,7 +57,7 @@ export function useScanWebSocket(scanId: string | undefined, enabled = true): Li
           case "module_start":
             return { ...s, currentModule: event.module, modulesTotal: event.total };
           case "module_end":
-            return { ...s, modulesDone: event.index, modulesTotal: event.total };
+            return { ...s, modulesDone: event.done ?? event.index, modulesTotal: event.total };
           case "finding":
             return { ...s, findings: [event.finding, ...s.findings] };
           case "scan_end":

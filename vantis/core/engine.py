@@ -189,9 +189,12 @@ class Engine:
                 self.report.add(f)
                 self._emit(callback, "finding", {"module": module_cls.name, "finding": f})
             print(f"    -> {len(findings)} finding(s)")
+            # Monotonic completed count — with concurrency, modules finish out of
+            # index order, so 'done' (not 'index') is the true progress value.
+            self._done += 1
             self._emit(callback, "module_end", {
                 "module": module_cls.name, "count": len(findings),
-                "index": index, "total": total,
+                "index": index, "done": self._done, "total": total,
             })
 
     def run(self, progress_callback: Optional[ProgressCallback] = None,
@@ -218,6 +221,7 @@ class Engine:
         total = len(modules)
         lock = threading.Lock()
         counter = iter(range(1, total + 1))
+        self._done = 0  # monotonic completed-module counter (for progress)
 
         # Preserve category order; parallelize only within web/cve.
         for category in sorted({m.category for m in modules}, key=lambda c: order.get(c, 99)):
