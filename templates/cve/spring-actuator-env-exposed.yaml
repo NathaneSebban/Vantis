@@ -1,0 +1,19 @@
+id: spring-actuator-env-exposed
+info:
+  name: Spring Boot Actuator /env endpoint exposed
+  severity: high
+  description: >
+    The Spring Boot Actuator /env endpoint is publicly reachable and
+    returns application environment properties, which frequently
+    include datasource credentials, API keys, and cloud secrets.
+  reference:
+    - https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html
+
+request:
+  method: GET
+  path: /actuator/env
+
+matchers:
+  status: [200]
+  body_contains:
+    - "propertySources"

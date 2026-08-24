@@ -1,0 +1,20 @@
+id: phpmyadmin-exposed
+info:
+  name: phpMyAdmin panel publicly exposed
+  severity: medium
+  description: >
+    A phpMyAdmin login panel is reachable from the public internet.
+    Not a vulnerability by itself, but a significant attack-surface
+    increase (brute force, known phpMyAdmin CVEs) and often indicates
+    weak network segmentation.
+  reference:
+    - https://www.phpmyadmin.net/security/
+
+request:
+  method: GET
+  path: /phpmyadmin/index.php
+
+matchers:
+  status: [200]
+  body_contains:
+    - "phpMyAdmin"

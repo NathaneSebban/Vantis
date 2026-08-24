@@ -1,0 +1,18 @@
+id: jenkins-version-disclosure
+info:
+  name: Jenkins instance with version disclosure
+  severity: low
+  description: >
+    Jenkins login page exposes its exact version in the X-Jenkins header,
+    letting an attacker check for known CVEs against that specific build.
+  reference:
+    - https://www.jenkins.io/security/advisories/
+
+request:
+  method: GET
+  path: /login
+
+matchers:
+  status: [200]
+  header:
+    X-Jenkins: "."

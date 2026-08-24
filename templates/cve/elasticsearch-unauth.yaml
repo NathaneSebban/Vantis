@@ -1,0 +1,21 @@
+id: elasticsearch-unauth
+info:
+  name: Elasticsearch instance reachable without authentication
+  severity: critical
+  description: >
+    The Elasticsearch root endpoint responds with cluster info without
+    any authentication, meaning indices are likely fully readable
+    (and often writable) by anyone. A very common source of large-scale
+    data leaks.
+  reference:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/security-basic-setup.html
+
+request:
+  method: GET
+  path: /
+
+matchers:
+  status: [200]
+  body_contains:
+    - "cluster_name"
+    - "lucene_version"
