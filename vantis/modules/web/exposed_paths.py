@@ -6,6 +6,8 @@ bug bounty programs.
 """
 from __future__ import annotations
 
+import secrets
+
 from vantis.core.plugin_base import ScanModule
 from vantis.core.report import Finding, Severity
 from vantis.utils.http_client import HttpClient
@@ -41,6 +43,17 @@ class ExposedPathsModule(ScanModule):
         client = HttpClient(timeout=self.ctx.http_timeout, delay=self.ctx.rate_limit_delay)
         base = str(self.ctx.target).rstrip("/")
 
+        # Catch-all / soft-404 baseline: many servers (SPAs with
+        # `try_files ... /index.html`, custom 404 handlers) answer 200 with the
+        # SAME page for ANY URL. Without this, every probe below would "match"
+        # and produce a wall of false positives. We fingerprint the response to
+        # a path that cannot exist, and later treat any probe that looks like
+        # that page as "not really there" — unless we have a positive content
+        # signal (must_contain) proving it's the real file.
+        probe = client.get(f"{base}/vantis-nonexistent-{secrets.token_hex(8)}")
+        catch_all = probe is not None and probe.status_code == 200 and bool(probe.text)
+        baseline_len = len(probe.text) if catch_all else 0
+
         findings: list[Finding] = []
 
         for path, (severity, description, must_contain) in CHECKS.items():
@@ -52,10 +65,20 @@ class ExposedPathsModule(ScanModule):
                 continue
             if must_contain and must_contain not in resp.text:
                 continue
-            # Avoid false positives from catch-all pages that return 200 for everything
             if len(resp.text) > 2_000_000:
                 continue
 
+            # Reject catch-all responses: if the server serves a default page
+            # for unknown paths and this response is ~the same size as that
+            # page, it's the default page, not the sensitive file. Skipped only
+            # when we have no positive content signal (must_contain is None) —
+            # a validated match (e.g. .git/config containing "[core]") is kept.
+            if must_contain is None and catch_all:
+                if abs(len(resp.text) - baseline_len) <= max(48, int(baseline_len * 0.02)):
+                    self.log(f"skip {path}: looks like catch-all page ({len(resp.text)}B ~ baseline {baseline_len}B)")
+                    continue
+
+            content_type = resp.headers.get("Content-Type", "?").split(";")[0].strip()
             findings.append(
                 Finding(
                     module=self.name,
@@ -64,6 +87,8 @@ class ExposedPathsModule(ScanModule):
                     target=base,
                     matched_at=url,
                     description=description,
+                    # Record what we actually observed so a finding can be audited.
+                    evidence=f"HTTP {resp.status_code}, {len(resp.text)} bytes, Content-Type: {content_type}",
                     remediation="Remove the file from the web root or block access at the web server/reverse proxy level.",
                 )
             )
