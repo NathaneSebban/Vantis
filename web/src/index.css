@@ -5,11 +5,17 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --bg: #050308;
-  --violet: #a855f7;
-  --violet-bright: #c084fc;
-  --border: rgba(168, 85, 247, 0.16);
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg2: #f6f4fd;
+  --text: #14122e;         /* near-black navy from the logo wordmark */
+  --muted: #635d80;
+  --faint: #9691ac;
+  --violet: #4c2fbf;       /* deep logo violet */
+  --violet-bright: #6d4fe0; /* vivid logo violet */
+  --violet-ink: #241a52;   /* darkest logo navy-violet */
+  --border: rgba(76, 47, 191, 0.16);
+  --border-soft: rgba(76, 47, 191, 0.1);
 }
 
 html,
@@ -20,13 +26,14 @@ body,
 
 @layer base {
   body {
-    @apply bg-ink-950 text-[#e7e2f0] font-sans antialiased;
+    @apply font-sans antialiased;
     background-color: var(--bg);
+    color: var(--text);
     overflow-x: hidden;
   }
 
-  /* Drifting neon aurora — a soft haze of violet/indigo/magenta light that
-     slowly wanders behind everything. */
+  /* Drifting violet light — a soft wash of the logo's purples that slowly
+     wanders behind everything. Subtle on white: premium, not arcade. */
   body::before {
     content: "";
     position: fixed;
@@ -34,16 +41,16 @@ body,
     z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(38% 42% at 20% 25%, rgba(139, 92, 246, 0.35), transparent 60%),
-      radial-gradient(32% 38% at 82% 22%, rgba(217, 70, 239, 0.22), transparent 62%),
-      radial-gradient(45% 48% at 68% 82%, rgba(99, 102, 241, 0.28), transparent 60%),
-      radial-gradient(30% 34% at 30% 88%, rgba(34, 211, 238, 0.14), transparent 60%);
-    filter: blur(70px) saturate(130%);
-    animation: drift 26s ease-in-out infinite;
+      radial-gradient(36% 40% at 18% 22%, rgba(109, 79, 224, 0.22), transparent 60%),
+      radial-gradient(30% 36% at 84% 18%, rgba(76, 47, 191, 0.14), transparent 62%),
+      radial-gradient(44% 46% at 70% 84%, rgba(99, 91, 224, 0.18), transparent 60%),
+      radial-gradient(28% 32% at 28% 90%, rgba(124, 92, 255, 0.12), transparent 60%);
+    filter: blur(80px) saturate(120%);
+    animation: drift 28s ease-in-out infinite;
     will-change: transform;
   }
 
-  /* Fine technical grid, masked to fade toward the edges. */
+  /* Fine violet technical grid, masked to fade toward the edges. */
   body::after {
     content: "";
     position: fixed;
@@ -51,94 +58,99 @@ body,
     z-index: -1;
     pointer-events: none;
     background-image:
-      linear-gradient(to right, rgba(168, 85, 247, 0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(168, 85, 247, 0.06) 1px, transparent 1px);
-    background-size: 44px 44px;
-    -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 55%, transparent 100%);
-    mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 55%, transparent 100%);
+      linear-gradient(to right, rgba(76, 47, 191, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(76, 47, 191, 0.05) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(ellipse 92% 82% at 50% 38%, #000 55%, transparent 100%);
+    mask-image: radial-gradient(ellipse 92% 82% at 50% 38%, #000 55%, transparent 100%);
   }
 
   ::selection {
-    background: rgba(168, 85, 247, 0.35);
-    color: #fff;
+    background: rgba(109, 79, 224, 0.25);
+    color: var(--violet-ink);
   }
 
-  /* Slim neon scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(168, 85, 247, 0.4) transparent;
+    scrollbar-color: rgba(76, 47, 191, 0.35) transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: linear-gradient(rgba(168, 85, 247, 0.5), rgba(99, 102, 241, 0.5));
+    background: linear-gradient(rgba(76, 47, 191, 0.4), rgba(109, 79, 224, 0.4));
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(rgba(192, 132, 252, 0.8), rgba(139, 92, 246, 0.8));
+    background: linear-gradient(rgba(76, 47, 191, 0.7), rgba(109, 79, 224, 0.7));
     background-clip: content-box;
   }
 }
 
 @layer components {
-  /* Frosted panel with a faint violet edge and depth. */
+  /* White panel with a faint violet edge and soft violet-tinted depth. */
   .card {
-    @apply rounded-xl border bg-white/[0.03] backdrop-blur-xl;
-    border-color: var(--border);
-    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 24px 48px -30px rgba(0, 0, 0, 0.9);
+    @apply rounded-xl border bg-white;
+    border-color: var(--border-soft);
+    box-shadow: 0 1px 2px rgba(36, 26, 82, 0.04), 0 18px 40px -28px rgba(76, 47, 191, 0.35);
   }
   .card-hover {
     @apply transition duration-200;
   }
   .card-hover:hover {
-    border-color: rgba(168, 85, 247, 0.4);
-    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.25), 0 0 34px -10px rgba(168, 85, 247, 0.45),
-      0 24px 48px -30px rgba(0, 0, 0, 0.9);
+    border-color: rgba(76, 47, 191, 0.35);
+    box-shadow: 0 0 0 1px rgba(76, 47, 191, 0.16), 0 14px 34px -18px rgba(76, 47, 191, 0.5);
+    transform: translateY(-1px);
   }
 
-  /* Primary neon action button. */
+  /* Primary deep-violet action button with a glow. */
   .btn-primary {
     @apply relative inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition duration-200 disabled:cursor-not-allowed;
-    background: linear-gradient(135deg, #7c3aed, #a855f7 55%, #c026d3);
-    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.3), 0 8px 24px -8px rgba(168, 85, 247, 0.7);
+    background: linear-gradient(135deg, #3a2a8c, #4c2fbf 50%, #6d4fe0);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 10px 26px -8px rgba(76, 47, 191, 0.65);
   }
   .btn-primary:hover:not(:disabled) {
-    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.6), 0 10px 30px -6px rgba(192, 132, 252, 0.9);
-    filter: brightness(1.08);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 12px 30px -6px rgba(109, 79, 224, 0.8);
+    filter: brightness(1.06);
   }
   .btn-primary:disabled {
-    background: #1c1630;
-    color: #6b6482;
+    background: #e7e3f4;
+    color: #a49dbd;
     box-shadow: none;
   }
 
   /* Secondary / ghost button. */
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#c9c2dc] transition;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition;
     border-color: var(--border);
+    color: var(--violet);
+    background: #fff;
   }
   .btn-ghost:hover {
-    border-color: rgba(168, 85, 247, 0.45);
-    background: rgba(168, 85, 247, 0.08);
-    color: #fff;
+    border-color: rgba(76, 47, 191, 0.45);
+    background: rgba(76, 47, 191, 0.06);
+    color: var(--violet-ink);
   }
 
   /* Inputs / selects */
   .field {
-    @apply w-full rounded-lg border bg-ink-900/70 px-3 py-2 text-sm text-[#e7e2f0] outline-none transition placeholder:text-[#6b6482];
+    @apply w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none transition;
+    color: var(--text);
     border-color: var(--border);
   }
+  .field::placeholder {
+    color: #a9a3bd;
+  }
   .field:focus {
-    border-color: rgba(168, 85, 247, 0.7);
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+    border-color: rgba(76, 47, 191, 0.6);
+    box-shadow: 0 0 0 3px rgba(76, 47, 191, 0.14);
   }
 
   .neon-text {
-    color: var(--violet-bright);
-    text-shadow: 0 0 18px rgba(192, 132, 252, 0.75);
+    color: var(--violet);
+    text-shadow: 0 1px 20px rgba(109, 79, 224, 0.35);
   }
 }

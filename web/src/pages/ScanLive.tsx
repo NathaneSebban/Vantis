@@ -37,10 +37,10 @@ export function ScanLive() {
     <div className="mx-auto max-w-3xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-mono text-xl text-zinc-100">{scan?.target ?? "…"}</h1>
+          <h1 className="font-mono text-xl text-violetx-ink">{scan?.target ?? "…"}</h1>
           <div className="mt-2 flex items-center gap-2">
             {status && <StatusBadge status={status} />}
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-[#8b84a3]">
               {live.connected ? "● live stream" : "○ offline (polling)"}
             </span>
           </div>
@@ -58,10 +58,10 @@ export function ScanLive() {
       {/* Progress */}
       <div className="mt-6 card p-5">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-zinc-400">
+          <span className="text-[#635d80]">
             {currentModule ? (
               <>
-                Current module: <span className="font-mono text-zinc-200">{currentModule}</span>
+                Current module: <span className="font-mono text-[#2b2740]">{currentModule}</span>
               </>
             ) : done ? (
               "Scan finished"
@@ -69,7 +69,7 @@ export function ScanLive() {
               "Initializing…"
             )}
           </span>
-          <span className="text-2xl font-semibold tabular-nums text-zinc-100">{findingsCount}</span>
+          <span className="text-2xl font-semibold tabular-nums text-violetx-ink">{findingsCount}</span>
         </div>
         <div className="mt-1 flex items-center justify-between">
           <div className="flex-1">
@@ -86,18 +86,18 @@ export function ScanLive() {
       </div>
 
       {live.error && (
-        <p className="mt-4 rounded-md border border-red-900 bg-red-950/40 p-3 text-sm text-red-300">
+        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           Error: {live.error}
         </p>
       )}
 
       {/* Live feed */}
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-[#8b84a3]">
         Live findings
       </h2>
       <div className="mt-3 space-y-2">
         {findings.length === 0 && (
-          <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-[#6b6482]">
+          <p className="rounded-xl border border-dashed border-[#dcd5f0] p-8 text-center text-sm text-[#9691ac]">
             {done ? "No findings detected." : "Waiting for the first results…"}
           </p>
         )}

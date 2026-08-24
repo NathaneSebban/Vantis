@@ -52,12 +52,12 @@ export function ScanReport() {
     <div className="mx-auto max-w-4xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-mono text-xl text-zinc-100">{scan?.target ?? "…"}</h1>
+          <h1 className="font-mono text-xl text-violetx-ink">{scan?.target ?? "…"}</h1>
           <div className="mt-2 flex items-center gap-3">
             {scan && <StatusBadge status={scan.status} />}
-            <span className="text-sm text-zinc-500">{findings.length} findings</span>
+            <span className="text-sm text-[#8b84a3]">{findings.length} findings</span>
             {scan?.status === "running" && (
-              <Link to={`/scans/${id}`} className="text-sm text-blue-400 hover:underline">
+              <Link to={`/scans/${id}`} className="text-sm text-violetx hover:underline">
                 follow live →
               </Link>
             )}
@@ -80,20 +80,20 @@ export function ScanReport() {
       {scan && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="card p-5">
-            <h2 className="text-sm font-semibold text-zinc-300">Severity breakdown</h2>
+            <h2 className="text-sm font-semibold text-[#3a3556]">Severity breakdown</h2>
             <div className="mt-3">
               <SeverityChart counts={scan.severity_counts} />
             </div>
           </div>
           <div className="card p-5">
-            <h2 className="text-sm font-semibold text-zinc-300">Summary</h2>
+            <h2 className="text-sm font-semibold text-[#3a3556]">Summary</h2>
             <dl className="mt-3 grid grid-cols-5 gap-2 text-center">
               {SEVERITY_ORDER.map((s) => (
-                <div key={s} className="rounded-md bg-zinc-950 p-2">
+                <div key={s} className="rounded-md bg-violetx-tint p-2">
                   <dt className="text-xs" style={{ color: SEVERITY_META[s].hex }}>
                     {SEVERITY_META[s].label}
                   </dt>
-                  <dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-100">
+                  <dd className="mt-0.5 text-lg font-semibold tabular-nums text-violetx-ink">
                     {scan.severity_counts[s]}
                   </dd>
                 </div>
@@ -113,7 +113,7 @@ export function ScanReport() {
                 key={s}
                 onClick={() => toggleSev(s)}
                 className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                  on ? "text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                  on ? "text-white" : "bg-violetx-soft text-[#635d80] hover:bg-violetx-soft"
                 }`}
                 style={on ? { background: SEVERITY_META[s].hex } : undefined}
               >
@@ -145,9 +145,9 @@ export function ScanReport() {
 
       {/* Findings list */}
       <div className="mt-4 space-y-2">
-        {isLoading && <p className="text-sm text-zinc-500">Loading…</p>}
+        {isLoading && <p className="text-sm text-[#8b84a3]">Loading…</p>}
         {!isLoading && visible.length === 0 && (
-          <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-[#6b6482]">
+          <p className="rounded-xl border border-dashed border-[#dcd5f0] p-8 text-center text-sm text-[#9691ac]">
             No findings match the filters.
           </p>
         )}

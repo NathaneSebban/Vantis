@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from "react-router-dom";
+import logoMark from "./assets/logo.png";
 import { NewScan } from "./pages/NewScan";
 import { ScanLive } from "./pages/ScanLive";
 import { ScanReport } from "./pages/ScanReport";
@@ -8,22 +9,21 @@ function Nav() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `relative rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
       isActive
-        ? "text-white shadow-[0_0_0_1px_rgba(168,85,247,0.4),0_0_18px_-6px_rgba(168,85,247,0.7)] bg-violet-500/10"
-        : "text-[#9a91b4] hover:text-white hover:bg-white/5"
+        ? "text-violetx-ink bg-violetx-soft shadow-[0_0_0_1px_rgba(76,47,191,0.18)]"
+        : "text-[#635d80] hover:text-violetx-ink hover:bg-violetx-tint"
     }`;
   return (
-    <header className="sticky top-0 z-30 border-b border-white/5 bg-ink-950/60 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
+    <header className="sticky top-0 z-30 border-b border-[#ece8f8] bg-white/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         <NavLink to="/" className="group flex items-center gap-2.5">
-          <span className="relative grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-[0_0_18px_-2px_rgba(168,85,247,0.8)]">
-            <span className="absolute inset-0 rounded-lg ring-1 ring-white/20" />
-            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
-              <path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" />
-            </svg>
-          </span>
+          <img
+            src={logoMark}
+            alt="Vantis"
+            className="h-9 w-9 rounded-lg object-contain drop-shadow-[0_4px_14px_rgba(76,47,191,0.35)]"
+          />
           <span className="flex items-baseline gap-2">
-            <span className="text-lg font-extrabold tracking-tight text-white neon-text">Vantis</span>
-            <span className="hidden text-[10px] font-medium uppercase tracking-[0.2em] text-[#6b6482] sm:inline">
+            <span className="text-lg font-extrabold tracking-tight neon-text">Vantis</span>
+            <span className="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9691ac] sm:inline">
               scanner
             </span>
           </span>
@@ -51,7 +51,7 @@ export default function App() {
           <Route path="/new" element={<NewScan />} />
           <Route path="/scans/:id" element={<ScanLive />} />
           <Route path="/scans/:id/report" element={<ScanReport />} />
-          <Route path="*" element={<p className="text-[#9a91b4]">Page not found.</p>} />
+          <Route path="*" element={<p className="text-[#635d80]">Page not found.</p>} />
         </Routes>
       </main>
     </div>

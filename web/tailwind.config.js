@@ -1,30 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        ink: {
-          950: "#050308",
-          900: "#0a0712",
-          800: "#110b1f",
-          700: "#181128",
+        // Deep violet family sampled from the logo (no pink/magenta).
+        violetx: {
+          ink: "#241a52",
+          deep: "#3a2a8c",
+          DEFAULT: "#4c2fbf",
+          bright: "#6d4fe0",
+          soft: "#efecfb",
+          tint: "#f6f4fd",
         },
-        neon: {
-          violet: "#a855f7",
-          bright: "#c084fc",
-          indigo: "#6366f1",
-          magenta: "#d946ef",
-          cyan: "#22d3ee",
-        },
-        // Severity accents — brightened so they glow on the near-black ground.
+        // Semantic severity colors — kept distinguishable but pink-free
+        // (true reds/oranges, indigo/slate), readable on a white ground.
         severity: {
-          critical: "#ff2d55",
-          high: "#ff5470",
-          medium: "#ff9f43",
-          low: "#3b82f6",
-          info: "#8b8299",
+          critical: "#a80f22",
+          high: "#dc2626",
+          medium: "#e8590c",
+          low: "#4f46e5",
+          info: "#64748b",
         },
       },
       fontFamily: {
@@ -32,10 +28,8 @@ export default {
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
       boxShadow: {
-        neon: "0 0 0 1px rgba(168,85,247,0.35), 0 0 20px -2px rgba(168,85,247,0.45)",
-        "neon-soft": "0 0 30px -8px rgba(168,85,247,0.55)",
-        glow: "0 0 24px -6px rgba(192,132,252,0.7)",
-        panel: "0 1px 0 0 rgba(255,255,255,0.05) inset, 0 20px 40px -24px rgba(0,0,0,0.8)",
+        glow: "0 12px 30px -8px rgba(76,47,191,0.55)",
+        "glow-soft": "0 10px 26px -12px rgba(76,47,191,0.4)",
       },
       keyframes: {
         drift: {
@@ -44,24 +38,15 @@ export default {
           "66%": { transform: "translate3d(-3%, 6%, 0) rotate(-30deg) scale(1.15)" },
           "100%": { transform: "translate3d(-4%, -2%, 0) rotate(0deg) scale(1.1)" },
         },
-        pulseglow: {
-          "0%, 100%": { opacity: "0.55" },
-          "50%": { opacity: "1" },
-        },
-        scanline: {
-          "0%": { transform: "translateY(-100%)" },
-          "100%": { transform: "translateY(100%)" },
-        },
+        pulseglow: { "0%, 100%": { opacity: "0.5" }, "50%": { opacity: "1" } },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
       },
       animation: {
-        drift: "drift 26s ease-in-out infinite",
-        "drift-slow": "drift 40s ease-in-out infinite reverse",
-        pulseglow: "pulseglow 3.5s ease-in-out infinite",
-        scanline: "scanline 4s linear infinite",
+        drift: "drift 28s ease-in-out infinite",
+        pulseglow: "pulseglow 3s ease-in-out infinite",
         shimmer: "shimmer 2.2s linear infinite",
       },
     },

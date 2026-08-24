@@ -1,23 +1,22 @@
 import type { Finding } from "../api/types";
-import { SEVERITY_META } from "./severity";
 import { SeverityBadge } from "./SeverityBadge";
 
 // Side panel showing the full detail of a finding.
 export function FindingDetail({ finding, onClose }: { finding: Finding; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex justify-end bg-violetx-ink/25 backdrop-blur-sm" onClick={onClose}>
       <aside
-        className="h-full w-full max-w-md overflow-y-auto border-l border-violet-500/20 bg-ink-950/95 p-6 shadow-[-24px_0_60px_-24px_rgba(168,85,247,0.5)]"
+        className="h-full w-full max-w-md overflow-y-auto border-l border-[#e6e1f5] bg-white p-6 shadow-[-24px_0_60px_-24px_rgba(76,47,191,0.4)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
             <SeverityBadge severity={finding.severity} />
-            <h2 className="mt-2 text-lg font-semibold text-zinc-100">{finding.title}</h2>
+            <h2 className="mt-2 text-lg font-bold text-violetx-ink">{finding.title}</h2>
           </div>
           <button
             onClick={onClose}
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-lg p-1.5 text-[#9691ac] transition hover:bg-violetx-soft hover:text-violetx-ink"
             aria-label="Close"
           >
             ✕
@@ -32,7 +31,7 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
           {finding.remediation && <Field label="Remediation" value={finding.remediation} />}
           {finding.references.length > 0 && (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">References</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-[#9691ac]">References</dt>
               <dd className="mt-1 space-y-1">
                 {finding.references.map((ref) => (
                   <a
@@ -40,8 +39,7 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
                     href={ref}
                     target="_blank"
                     rel="noreferrer"
-                    className="block truncate text-blue-400 hover:underline"
-                    style={{ color: SEVERITY_META[finding.severity].hex }}
+                    className="block truncate font-medium text-violetx hover:underline"
                   >
                     {ref}
                   </a>
@@ -59,10 +57,10 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
 function Field({ label, value, mono, block }: { label: string; value: string; mono?: boolean; block?: boolean }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-[#9691ac]">{label}</dt>
       <dd
-        className={`mt-1 text-zinc-200 ${mono ? "font-mono text-xs" : ""} ${
-          block ? "whitespace-pre-wrap break-all rounded bg-zinc-900 p-2" : ""
+        className={`mt-1 text-[#2b2740] ${mono ? "font-mono text-xs" : ""} ${
+          block ? "whitespace-pre-wrap break-all rounded-lg bg-violetx-tint p-2 ring-1 ring-[#eae5f8]" : ""
         }`}
       >
         {value}
