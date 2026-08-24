@@ -1,11 +1,13 @@
 # Vantis
 
 Modular, plugin-based vulnerability scanner combining:
-- 🔍 **Reconnaissance** — subdomain enumeration (crt.sh), common-port scanning, technology fingerprinting
-- 🌐 **Web testing** — security headers, reflected XSS, SQL injection (non-destructive detection), exposed sensitive files/paths
-- 🧩 **CVE templates** — Nuclei-style engine, detection driven by YAML templates
+- 🔍 **Reconnaissance** — subdomain enumeration (crt.sh), common-port scanning, technology fingerprinting, **TLS/SSL audit**, **subdomain takeover**
+- 🌐 **Web testing** — security headers, reflected XSS, SQL injection, **path traversal/LFI**, **SSTI**, **CORS misconfig**, **open redirect**, **dangerous HTTP methods**, exposed paths, **content discovery**, **secrets in JS** (all non-destructive detection)
+- 🧩 **CVE detection** — Nuclei-style YAML template engine (22 templates) + **version→CVE** mapping
 
 Built for **bug bounty** and **authorized** penetration testing.
+
+Capabilities: an **injection-point crawler** (links, GET forms, robots/sitemap, bounded BFS, Wayback), **authenticated scanning** (session headers/cookies), **concurrent** module execution, exports to **JSON / HTML / Markdown / PDF / SARIF**, **finding triage** (false-positive management), **scan diffing**, **scheduled recurring scans**, and **webhook notifications**.
 
 Vantis can be used two ways:
 - **CLI** — a standalone command-line scanner (no web dependencies).
@@ -99,10 +101,13 @@ The Vite dev server proxies `/api` (REST + WebSocket) to `http://localhost:8000`
 | `POST` | `/api/scans` | Launch a scan (`authorized: true` required) → `202` + `scan_id` |
 | `GET` | `/api/scans` | Paginated history |
 | `GET` | `/api/scans/{id}` | Status + progress (current module, findings) |
-| `GET` | `/api/scans/{id}/findings` | Findings, filterable with `?severity=` and `?module=` |
-| `GET` | `/api/scans/{id}/report?format=json\|html\|md\|pdf` | Export the report |
+| `GET` | `/api/scans/{id}/findings` | Findings, filterable with `?severity=`, `?module=`, `?status=` |
+| `PATCH` | `/api/scans/{id}/findings/{fid}` | Triage a finding (`open` / `false_positive` / `confirmed`) |
+| `GET` | `/api/scans/{id}/report?format=json\|html\|md\|pdf\|sarif` | Export the report |
+| `GET` | `/api/scans/{id}/diff?against={id}` | Compare two scans (new / fixed / unchanged) |
 | `DELETE` | `/api/scans/{id}` | Cancel a running scan, or delete history |
 | `WS` | `/api/scans/{id}/live` | Real-time stream of findings during the scan |
+| `POST/GET/PATCH/DELETE` | `/api/schedules` | Manage recurring scans (creation requires `authorized: true`) |
 
 The scan runs in the background; the API responds immediately and progress is pushed live over the WebSocket.
 
@@ -117,6 +122,11 @@ The API is configured entirely through the environment (or a `.env` file at the 
 | `VANTIS_SCAN_RATE_LIMIT` | `5/hour` | Scan-creation limit per IP |
 | `VANTIS_API_KEY` | *(empty = disabled)* | If set, **authentication is required**: `X-API-Key` header (and `?key=` for the WebSocket). On the frontend, provide the same value via `VITE_API_KEY`. **Set this before any network exposure.** |
 | `VANTIS_BLOCK_PRIVATE_TARGETS` | `false` | If `true`, rejects private/loopback/reserved IP targets (basic anti-SSRF). Off by default because authorized internal pentests legitimately target internal hosts. |
+| `VANTIS_SCAN_WORKERS` | `4` | Concurrent workers for web/cve modules within one scan (recon stays sequential). |
+| `VANTIS_WEBHOOK_URL` | *(empty = disabled)* | If set, POST a summary to this webhook (Slack/Discord/generic) when a scan finishes with findings at/above the threshold. |
+| `VANTIS_WEBHOOK_MIN_SEVERITY` | `high` | Minimum severity that triggers a webhook notification. |
+
+**Authenticated scanning** (CLI): `-H 'Authorization: Bearer …'` and `-C 'session=…'` (both repeatable). API: `headers`/`cookies` fields on `POST /api/scans` (used in-memory only, never stored). **Concurrency** (CLI): `--workers N`.
 
 ### Using MySQL / MariaDB (e.g. WAMP + phpMyAdmin)
 
@@ -203,10 +213,16 @@ Templates are YAML files under `templates/cve/`. They describe a request and a m
 
 ## Roadmap
 
-- [ ] Subdomain takeover detection
-- [ ] Authentication support (cookies/tokens) to scan authenticated areas
-- [ ] SARIF export for CI/CD integration
-- [ ] Secret detection in exposed JavaScript
+- [x] Subdomain takeover detection
+- [x] Authentication support (cookies/tokens) to scan authenticated areas
+- [x] SARIF export for CI/CD integration
+- [x] Secret detection in exposed JavaScript
+- [x] TLS/SSL audit, content discovery, CORS / open-redirect / HTTP-method checks
+- [x] Path traversal / LFI and SSTI detection
+- [x] Version→CVE mapping; deeper crawler (robots/sitemap/BFS/Wayback)
+- [x] Concurrent engine; finding triage; scan diffing; scheduled scans; webhooks
+- [ ] Distributed workers (Celery/Redis) — the ScanManager is structured for it; needs a broker to run
+- [ ] Out-of-band interaction server for blind XSS/SSRF — needs a public callback host
 - [ ] Adaptive rate-limiting based on 429 responses
 
 ## License
