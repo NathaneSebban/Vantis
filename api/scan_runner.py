@@ -156,6 +156,7 @@ class ScanManager:
         settings = get_settings()
         db = SessionLocal()
         cancel_flag = self._cancel_flags.get(scan_id)
+        persist_errors: dict = {"count": 0, "last": ""}
 
         def safe_commit() -> bool:
             """Commit, rolling back on failure so the session stays usable.
@@ -164,13 +165,16 @@ class ScanManager:
             callback (to protect scans from broken observers), which would
             otherwise leave a failed commit's session in a broken state and
             cascade into every later write. Handling the error here keeps the
-            session healthy and makes a lost write visible in the logs rather
-            than silent."""
+            session healthy; persistent failures are counted so the scan is
+            reported as FAILED rather than silently 'completed' with 0 findings
+            (e.g. a schema drift like a missing column)."""
             try:
                 db.commit()
                 return True
-            except Exception as e:  # noqa: BLE001 - persistence hiccup (e.g. lock)
+            except Exception as e:  # noqa: BLE001 - persistence hiccup (e.g. lock, schema drift)
                 db.rollback()
+                persist_errors["count"] += 1
+                persist_errors["last"] = str(e).split("\n")[0]
                 print(f"[!] scan {scan_id}: DB commit failed, rolled back: {e}")
                 return False
 
@@ -223,6 +227,22 @@ class ScanManager:
                 enabled_modules=enabled_modules or None,
             )
             engine.run(progress_callback=progress)
+
+            # If findings couldn't be persisted (e.g. a schema drift), don't
+            # pretend success — surface it as a failure with a clear reason
+            # instead of a misleading "completed" with 0 results.
+            if persist_errors["count"]:
+                scan = db.get(ScanRow, scan_id)
+                if scan:
+                    scan.status = ScanStatus.FAILED
+                    scan.current_module = ""
+                    scan.finished_at = _utcnow()
+                    scan.error = (f"{persist_errors['count']} result(s) could not be saved. "
+                                  f"Database error: {persist_errors['last']}. "
+                                  "If you upgraded Vantis, run: alembic upgrade head")
+                    db.commit()
+                self._push_ws(scan_id, {"type": "status", "status": ScanStatus.FAILED, "error": scan.error if scan else ""})
+                return
 
             # Fire the completion webhook BEFORE flipping to COMPLETED, so a
             # watcher that reacts to "completed" can rely on the notification

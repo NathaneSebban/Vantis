@@ -143,6 +143,11 @@ alembic upgrade head
 
 SQLite remains the default: no extra installation is required to get started.
 
+> **After pulling updates, apply new migrations:** `alembic upgrade head`.
+> If the schema is behind, scans can complete with **0 saved findings** — Vantis
+> now detects this and marks such scans **failed** with a message telling you to
+> run the migration, instead of silently reporting an empty result.
+
 ## Architecture
 
 ```
