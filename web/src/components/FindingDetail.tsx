@@ -18,7 +18,7 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
           <button
             onClick={onClose}
             className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-            aria-label="Fermer"
+            aria-label="Close"
           >
             ✕
           </button>
@@ -26,13 +26,13 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
 
         <dl className="mt-6 space-y-4 text-sm">
           <Field label="Module" value={finding.module} mono />
-          <Field label="Emplacement" value={finding.matched_at || finding.target} mono />
+          <Field label="Location" value={finding.matched_at || finding.target} mono />
           {finding.description && <Field label="Description" value={finding.description} />}
-          {finding.evidence && <Field label="Preuve" value={finding.evidence} mono block />}
-          {finding.remediation && <Field label="Remédiation" value={finding.remediation} />}
+          {finding.evidence && <Field label="Evidence" value={finding.evidence} mono block />}
+          {finding.remediation && <Field label="Remediation" value={finding.remediation} />}
           {finding.references.length > 0 && (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Références</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">References</dt>
               <dd className="mt-1 space-y-1">
                 {finding.references.map((ref) => (
                   <a
@@ -49,7 +49,7 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
               </dd>
             </div>
           )}
-          {finding.timestamp && <Field label="Détecté à" value={finding.timestamp} mono />}
+          {finding.timestamp && <Field label="Detected at" value={finding.timestamp} mono />}
         </dl>
       </aside>
     </div>

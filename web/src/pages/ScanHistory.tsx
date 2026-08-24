@@ -22,9 +22,9 @@ export function ScanHistory() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-100">Historique des scans</h1>
+        <h1 className="text-2xl font-semibold text-zinc-100">Scan history</h1>
         <Link to="/new" className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
-          + Nouveau scan
+          + New scan
         </Link>
       </div>
 
@@ -32,9 +32,9 @@ export function ScanHistory() {
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-500">
             <tr>
-              <th className="px-4 py-3">Cible</th>
+              <th className="px-4 py-3">Target</th>
               <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Findings</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -43,14 +43,14 @@ export function ScanHistory() {
             {isLoading && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
-                  Chargement…
+                  Loading…
                 </td>
               </tr>
             )}
             {data?.items.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
-                  Aucun scan pour l'instant.
+                  No scans yet.
                 </td>
               </tr>
             )}
@@ -87,15 +87,15 @@ export function ScanHistory() {
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button onClick={() => relaunch(scan)} className="text-xs text-zinc-400 hover:text-emerald-400">
-                      Relancer
+                      Relaunch
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm("Supprimer / annuler ce scan ?")) del.mutate(scan.scan_id);
+                        if (confirm("Delete / cancel this scan?")) del.mutate(scan.scan_id);
                       }}
                       className="text-xs text-zinc-400 hover:text-red-400"
                     >
-                      Supprimer
+                      Delete
                     </button>
                   </div>
                 </td>
@@ -109,7 +109,7 @@ export function ScanHistory() {
       {data && data.total > PAGE && (
         <div className="mt-4 flex items-center justify-between text-sm text-zinc-400">
           <span>
-            {offset + 1}–{Math.min(offset + PAGE, data.total)} sur {data.total}
+            {offset + 1}–{Math.min(offset + PAGE, data.total)} of {data.total}
           </span>
           <div className="flex gap-2">
             <button
@@ -117,14 +117,14 @@ export function ScanHistory() {
               onClick={() => setOffset(Math.max(0, offset - PAGE))}
               className="rounded border border-zinc-700 px-3 py-1 disabled:opacity-40"
             >
-              Précédent
+              Previous
             </button>
             <button
               disabled={offset + PAGE >= data.total}
               onClick={() => setOffset(offset + PAGE)}
               className="rounded border border-zinc-700 px-3 py-1 disabled:opacity-40"
             >
-              Suivant
+              Next
             </button>
           </div>
         </div>

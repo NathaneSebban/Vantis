@@ -14,14 +14,14 @@ function Nav() {
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         <NavLink to="/" className="flex items-center gap-2">
           <span className="text-lg font-bold tracking-tight text-emerald-400">Vantis</span>
-          <span className="text-xs text-zinc-600">scanner de vulnérabilités</span>
+          <span className="text-xs text-zinc-600">vulnerability scanner</span>
         </NavLink>
         <nav className="flex items-center gap-1">
           <NavLink to="/" end className={linkClass}>
-            Historique
+            History
           </NavLink>
           <NavLink to="/new" className={linkClass}>
-            Nouveau scan
+            New scan
           </NavLink>
         </nav>
       </div>
@@ -39,7 +39,7 @@ export default function App() {
           <Route path="/new" element={<NewScan />} />
           <Route path="/scans/:id" element={<ScanLive />} />
           <Route path="/scans/:id/report" element={<ScanReport />} />
-          <Route path="*" element={<p className="text-zinc-400">Page introuvable.</p>} />
+          <Route path="*" element={<p className="text-zinc-400">Page not found.</p>} />
         </Routes>
       </main>
     </div>

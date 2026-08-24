@@ -1,11 +1,11 @@
 import type { ScanStatus } from "../api/types";
 
 const META: Record<ScanStatus, { label: string; className: string }> = {
-  queued: { label: "En file", className: "bg-zinc-700 text-zinc-200" },
-  running: { label: "En cours", className: "bg-blue-600/80 text-white" },
-  completed: { label: "Terminé", className: "bg-emerald-700 text-white" },
-  failed: { label: "Échec", className: "bg-red-800 text-white" },
-  cancelled: { label: "Annulé", className: "bg-amber-800 text-white" },
+  queued: { label: "Queued", className: "bg-zinc-700 text-zinc-200" },
+  running: { label: "Running", className: "bg-blue-600/80 text-white" },
+  completed: { label: "Completed", className: "bg-emerald-700 text-white" },
+  failed: { label: "Failed", className: "bg-red-800 text-white" },
+  cancelled: { label: "Cancelled", className: "bg-amber-800 text-white" },
 };
 
 export function StatusBadge({ status }: { status: ScanStatus }) {

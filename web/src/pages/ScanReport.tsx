@@ -58,7 +58,7 @@ export function ScanReport() {
             <span className="text-sm text-zinc-500">{findings.length} findings</span>
             {scan?.status === "running" && (
               <Link to={`/scans/${id}`} className="text-sm text-blue-400 hover:underline">
-                suivre en direct →
+                follow live →
               </Link>
             )}
           </div>
@@ -80,13 +80,13 @@ export function ScanReport() {
       {scan && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-            <h2 className="text-sm font-semibold text-zinc-300">Répartition par sévérité</h2>
+            <h2 className="text-sm font-semibold text-zinc-300">Severity breakdown</h2>
             <div className="mt-3">
               <SeverityChart counts={scan.severity_counts} />
             </div>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-            <h2 className="text-sm font-semibold text-zinc-300">Résumé</h2>
+            <h2 className="text-sm font-semibold text-zinc-300">Summary</h2>
             <dl className="mt-3 grid grid-cols-5 gap-2 text-center">
               {SEVERITY_ORDER.map((s) => (
                 <div key={s} className="rounded-md bg-zinc-950 p-2">
@@ -127,7 +127,7 @@ export function ScanReport() {
           onChange={(e) => setModuleFilter(e.target.value)}
           className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300"
         >
-          <option value="">Tous les modules</option>
+          <option value="">All modules</option>
           {modules.map((m) => (
             <option key={m} value={m}>
               {m}
@@ -138,17 +138,17 @@ export function ScanReport() {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher…"
+          placeholder="Search…"
           className="flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-600"
         />
       </div>
 
       {/* Findings list */}
       <div className="mt-4 space-y-2">
-        {isLoading && <p className="text-sm text-zinc-500">Chargement…</p>}
+        {isLoading && <p className="text-sm text-zinc-500">Loading…</p>}
         {!isLoading && visible.length === 0 && (
           <p className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">
-            Aucun finding ne correspond aux filtres.
+            No findings match the filters.
           </p>
         )}
         {visible.map((f, i) => (

@@ -41,7 +41,7 @@ export function ScanLive() {
           <div className="mt-2 flex items-center gap-2">
             {status && <StatusBadge status={status} />}
             <span className="text-xs text-zinc-500">
-              {live.connected ? "● flux temps réel" : "○ hors ligne (polling)"}
+              {live.connected ? "● live stream" : "○ offline (polling)"}
             </span>
           </div>
         </div>
@@ -50,7 +50,7 @@ export function ScanLive() {
             to={`/scans/${id}/report`}
             className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
           >
-            Voir le rapport →
+            View report →
           </Link>
         )}
       </div>
@@ -61,12 +61,12 @@ export function ScanLive() {
           <span className="text-zinc-400">
             {currentModule ? (
               <>
-                Module en cours : <span className="font-mono text-zinc-200">{currentModule}</span>
+                Current module: <span className="font-mono text-zinc-200">{currentModule}</span>
               </>
             ) : done ? (
-              "Scan terminé"
+              "Scan finished"
             ) : (
-              "Initialisation…"
+              "Initializing…"
             )}
           </span>
           <span className="text-2xl font-semibold tabular-nums text-zinc-100">{findingsCount}</span>
@@ -87,18 +87,18 @@ export function ScanLive() {
 
       {live.error && (
         <p className="mt-4 rounded-md border border-red-900 bg-red-950/40 p-3 text-sm text-red-300">
-          Erreur : {live.error}
+          Error: {live.error}
         </p>
       )}
 
       {/* Live feed */}
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-        Findings en direct
+        Live findings
       </h2>
       <div className="mt-3 space-y-2">
         {findings.length === 0 && (
           <p className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">
-            {done ? "Aucun finding détecté." : "En attente des premiers résultats…"}
+            {done ? "No findings detected." : "Waiting for the first results…"}
           </p>
         )}
         {findings.map((f, i) => (

@@ -122,7 +122,7 @@ class Report:
             </tr>""")
         escaped_target = html.escape(self.target)
         html_doc = f"""<!DOCTYPE html>
-<html lang="fr"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <title>Vantis Report — {escaped_target}</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, sans-serif; margin: 40px; background:#f8fafc; color:#0f172a;}}

@@ -1,82 +1,82 @@
 # Vantis
 
-Scanner de vulnérabilités modulaire à plugins, combinant :
-- 🔍 **Reconnaissance** — énumération de sous-domaines (crt.sh), scan de ports courants, fingerprinting de technologies
-- 🌐 **Tests web** — headers de sécurité, XSS réfléchi, injection SQL (détection non-destructive), fichiers/chemins sensibles exposés
-- 🧩 **Templates CVE** — moteur façon Nuclei, détection basée sur des templates YAML
+Modular, plugin-based vulnerability scanner combining:
+- 🔍 **Reconnaissance** — subdomain enumeration (crt.sh), common-port scanning, technology fingerprinting
+- 🌐 **Web testing** — security headers, reflected XSS, SQL injection (non-destructive detection), exposed sensitive files/paths
+- 🧩 **CVE templates** — Nuclei-style engine, detection driven by YAML templates
 
-Conçu pour le **bug bounty** et les tests d'intrusion **autorisés**.
+Built for **bug bounty** and **authorized** penetration testing.
 
-Vantis s'utilise de deux façons, au choix :
-- **CLI** — un scanner en ligne de commande autonome (aucune dépendance web).
-- **Stack web** — une **API REST** (FastAPI) et une **interface React** pour lancer des scans depuis le navigateur, suivre les résultats **en temps réel** (WebSocket) et parcourir l'historique.
+Vantis can be used two ways:
+- **CLI** — a standalone command-line scanner (no web dependencies).
+- **Web stack** — a **REST API** (FastAPI) and a **React interface** to launch scans from the browser, follow results **in real time** (WebSocket), and browse history.
 
 <!-- SCREENSHOT -->
-<!-- Remplacez cette ligne par une capture/GIF de l'interface, ex :
-     ![Interface Vantis](docs/screenshot.png) -->
+<!-- Replace this line with a screenshot/GIF of the interface, e.g.:
+     ![Vantis interface](docs/screenshot.png) -->
 
-## ⚠️ Avertissement légal — à lire avant toute utilisation
+## ⚠️ Legal notice — read before any use
 
-**Ce projet ne doit être utilisé que sur des cibles pour lesquelles vous avez une autorisation explicite** :
-un programme de bug bounty dont le scope couvre la cible, un contrat de pentest signé, ou un actif que vous possédez vous-même.
+**This project must only be used against targets you are explicitly authorized to test**:
+a bug bounty program whose scope covers the target, a signed pentest agreement, or an asset you own yourself.
 
-Scanner un système sans autorisation est **illégal dans la plupart des juridictions**, y compris pour de la reconnaissance passive agressive ou des tests non-destructifs. L'outil affiche un avertissement et demande une confirmation explicite avant chaque scan — ce n'est pas un détail cosmétique, c'est une garde-fou volontaire.
+Scanning a system without authorization is **illegal in most jurisdictions**, including aggressive passive reconnaissance and non-destructive testing. The tool shows a warning and requires an explicit confirmation before every scan — this is not cosmetic, it is a deliberate safeguard.
 
-Cette garde-fou existe partout :
-- **CLI** — prompt interactif d'autorisation (ou drapeau `--yes-i-am-authorized` que vous tapez vous-même).
-- **API** — le champ `"authorized": true` est **obligatoire** dans `POST /api/scans` ; sinon la requête est refusée (400).
-- **Interface web** — une case à cocher explicite « Je confirme être autorisé à tester cette cible », non contournable : le bouton *Lancer le scan* reste désactivé tant qu'elle n'est pas cochée.
+That safeguard exists everywhere:
+- **CLI** — interactive authorization prompt (or the `--yes-i-am-authorized` flag you type yourself).
+- **API** — the `"authorized": true` field is **mandatory** in `POST /api/scans`; the request is rejected (400) otherwise.
+- **Web interface** — an explicit "I confirm I am authorized to test this target" checkbox, non-bypassable: the *Launch scan* button stays disabled until it is checked.
 
-L'auteur décline toute responsabilité en cas d'utilisation non autorisée de cet outil.
+The author accepts no liability for unauthorized use of this tool.
 
 ## Installation
 
-### Option A — CLI seul (le plus léger)
+### Option A — CLI only (lightest)
 
-Aucune dépendance web, juste Python ≥ 3.10 :
+No web dependencies, just Python ≥ 3.10:
 
 ```bash
-git clone https://github.com/<votre-user>/vantis.git
+git clone https://github.com/<your-user>/vantis.git
 cd vantis
 pip install -e .
 ```
 
-Utilisation :
+Usage:
 
 ```bash
-# Scan complet (recon + web + cve)
-vantis --target https://exemple-autorise.com
+# Full scan (recon + web + cve)
+vantis --target https://authorized-example.com
 
-# Uniquement web + cve, avec sortie HTML
-vantis --target https://exemple-autorise.com --modules web,cve --output rapport.html
+# Web + cve only, with HTML output
+vantis --target https://authorized-example.com --modules web,cve --output report.html
 
-# Élargir le scope à des sous-domaines connus
-vantis --target exemple.com --scope exemple.com,api.exemple.com,staging.exemple.com
+# Widen the scope to known subdomains
+vantis --target example.com --scope example.com,api.example.com,staging.example.com
 
-# Mode verbeux + rapport JSON
-vantis --target https://exemple-autorise.com -v --output rapport.json
+# Verbose mode + JSON report
+vantis --target https://authorized-example.com -v --output report.json
 ```
 
-À l'exécution, l'outil demande une confirmation explicite d'autorisation avant de lancer le moindre test actif.
+At runtime the tool asks for an explicit authorization confirmation before launching any active test.
 
-### Option B — Stack web complète via Docker (le plus simple à démontrer)
+### Option B — Full web stack via Docker (easiest to demo)
 
-Une seule commande construit et lance l'API et l'interface :
+A single command builds and launches the API and the interface:
 
 ```bash
 docker compose up --build
 ```
 
-Puis ouvrez :
-- **Interface web** : <http://localhost:8080>
-- **API REST** : <http://localhost:8080/api>
-- **Documentation interactive (Swagger)** : <http://localhost:8080/api/docs>
+Then open:
+- **Web interface**: <http://localhost:8080>
+- **REST API**: <http://localhost:8080/api>
+- **Interactive docs (Swagger)**: <http://localhost:8080/api/docs>
 
-Le frontend (nginx) sert l'application et fait office de reverse-proxy vers l'API, y compris pour le WebSocket temps réel — le navigateur ne parle qu'à une seule origine, sans CORS à configurer. La base SQLite est persistée dans un volume Docker.
+The frontend (nginx) serves the app and reverse-proxies the API, including the real-time WebSocket — the browser only ever talks to a single origin, with no CORS to configure. The SQLite database is persisted in a Docker volume.
 
-### Option C — Stack web en développement (hot-reload)
+### Option C — Web stack in development (hot-reload)
 
-Pour développer, on lance les deux serveurs séparément :
+For development, run the two servers separately:
 
 ```bash
 # 1) API (terminal 1)
@@ -90,84 +90,85 @@ npm install
 npm run dev                              # http://localhost:5173
 ```
 
-Le serveur de dev Vite proxifie `/api` (REST + WebSocket) vers `http://localhost:8000`.
+The Vite dev server proxies `/api` (REST + WebSocket) to `http://localhost:8000`.
 
-## API REST — aperçu
+## REST API — overview
 
-| Méthode | Route | Rôle |
-|--------|-------|------|
-| `POST` | `/api/scans` | Lance un scan (`authorized: true` obligatoire) → `202` + `scan_id` |
-| `GET` | `/api/scans` | Historique paginé |
-| `GET` | `/api/scans/{id}` | Statut + progression (module en cours, findings) |
-| `GET` | `/api/scans/{id}/findings` | Findings, filtrables `?severity=` et `?module=` |
-| `GET` | `/api/scans/{id}/report?format=json\|html\|md\|pdf` | Export du rapport |
-| `DELETE` | `/api/scans/{id}` | Annule un scan en cours, ou supprime l'historique |
-| `WS` | `/api/scans/{id}/live` | Flux temps réel des findings pendant le scan |
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/scans` | Launch a scan (`authorized: true` required) → `202` + `scan_id` |
+| `GET` | `/api/scans` | Paginated history |
+| `GET` | `/api/scans/{id}` | Status + progress (current module, findings) |
+| `GET` | `/api/scans/{id}/findings` | Findings, filterable with `?severity=` and `?module=` |
+| `GET` | `/api/scans/{id}/report?format=json\|html\|md\|pdf` | Export the report |
+| `DELETE` | `/api/scans/{id}` | Cancel a running scan, or delete history |
+| `WS` | `/api/scans/{id}/live` | Real-time stream of findings during the scan |
 
-Le scan tourne en tâche de fond ; l'API répond immédiatement et l'avancement est poussé en direct via le WebSocket.
+The scan runs in the background; the API responds immediately and progress is pushed live over the WebSocket.
 
-## Configuration (variables d'environnement)
+## Configuration (environment variables)
 
-L'API se configure entièrement par l'environnement (ou un fichier `.env` à la racine, gitignoré). Tout a des valeurs par défaut adaptées au développement local.
+The API is configured entirely through the environment (or a `.env` file at the repo root, gitignored). Everything has sensible defaults for local development.
 
-| Variable | Défaut | Rôle |
-|----------|--------|------|
-| `VANTIS_DATABASE_URL` | `sqlite:///./vantis.db` | Base de données. Pour MySQL/WAMP : `mysql+pymysql://root:@localhost:3306/vantis` (nécessite `pip install -e ".[api,mysql]"`) |
-| `VANTIS_CORS_ORIGINS` | origines Vite | Origines autorisées (jamais `*`), séparées par des virgules |
-| `VANTIS_SCAN_RATE_LIMIT` | `5/hour` | Limite de création de scans par IP |
-| `VANTIS_API_KEY` | *(vide = désactivé)* | Si défini, **authentification obligatoire** : header `X-API-Key` (et `?key=` pour le WebSocket). Côté frontend, fournir la même valeur via `VITE_API_KEY`. **À définir avant toute exposition réseau.** |
-| `VANTIS_BLOCK_PRIVATE_TARGETS` | `false` | Si `true`, refuse les cibles en IP privée/loopback/réservée (anti-SSRF basique). Désactivé par défaut car un pentest interne autorisé vise légitimement des hôtes internes. |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `VANTIS_DATABASE_URL` | `sqlite:///./vantis.db` | Database. For MySQL/WAMP: `mysql+pymysql://root:@localhost:3306/vantis` (requires `pip install -e ".[api,mysql]"`) |
+| `VANTIS_CORS_ORIGINS` | Vite origins | Allowed origins (never `*`), comma-separated |
+| `VANTIS_SCAN_RATE_LIMIT` | `5/hour` | Scan-creation limit per IP |
+| `VANTIS_API_KEY` | *(empty = disabled)* | If set, **authentication is required**: `X-API-Key` header (and `?key=` for the WebSocket). On the frontend, provide the same value via `VITE_API_KEY`. **Set this before any network exposure.** |
+| `VANTIS_BLOCK_PRIVATE_TARGETS` | `false` | If `true`, rejects private/loopback/reserved IP targets (basic anti-SSRF). Off by default because authorized internal pentests legitimately target internal hosts. |
 
-### Utiliser MySQL / MariaDB (ex. WAMP + phpMyAdmin)
+### Using MySQL / MariaDB (e.g. WAMP + phpMyAdmin)
 
 ```bash
 # 1) Driver
 pip install -e ".[api,mysql]"
 
-# 2) Créer la base "vantis" (interclassement utf8mb4_unicode_ci) dans phpMyAdmin
+# 2) Create the "vantis" database (utf8mb4_unicode_ci collation) in phpMyAdmin
 
-# 3) Pointer l'API dessus (dans .env) puis migrer
+# 3) Point the API at it (in .env), then migrate
 #    VANTIS_DATABASE_URL=mysql+pymysql://root:@localhost:3306/vantis
 alembic upgrade head
 ```
 
-Le driver SQLite reste le défaut : aucune installation supplémentaire n'est requise pour démarrer.
+SQLite remains the default: no extra installation is required to get started.
 
 ## Architecture
 
 ```
 vantis/
 ├── core/
-│   ├── engine.py         # orchestrateur, découverte des modules, gate d'autorisation
-│   ├── plugin_base.py    # contrat ScanModule que chaque module implémente
-│   ├── target.py         # validation de cible et de scope
-│   └── report.py         # modèle de Finding + export JSON/Markdown/HTML
+│   ├── engine.py         # orchestrator, module discovery, authorization gate
+│   ├── plugin_base.py    # ScanModule contract every module implements
+│   ├── target.py         # target and scope validation (keeps path/query)
+│   └── report.py         # Finding model + JSON/Markdown/HTML/PDF export
 ├── modules/
 │   ├── recon/            # subdomain_enum, port_scan, tech_detect
-│   ├── web/               # headers_check, xss_check, sqli_check, exposed_paths
-│   └── cve/               # template_engine.py (moteur) + runner.py (module)
+│   ├── web/              # headers_check, xss_check, sqli_check, exposed_paths
+│   └── cve/              # template_engine.py (engine) + runner.py (module)
 └── utils/
-    └── http_client.py     # client HTTP partagé, rate-limité, User-Agent identifiable
+    ├── http_client.py    # shared HTTP client, rate-limited, identifiable User-Agent
+    └── crawler.py        # light injection-point discovery (links + GET forms)
 
-api/                        # API REST (FastAPI) — adapte le moteur pour le web
-├── main.py                 # app FastAPI, CORS, rate-limiting, cycle de vie
-├── routers/scans.py        # endpoints /api/scans + WebSocket
-├── models.py / schemas.py  # ORM SQLAlchemy / schémas Pydantic
-├── scan_runner.py          # exécution en tâche de fond (thread pool)
-└── websocket_manager.py    # diffusion des events en temps réel
+api/                        # REST API (FastAPI) — adapts the engine for the web
+├── main.py                 # FastAPI app, CORS, rate-limiting, lifecycle
+├── routers/scans.py        # /api/scans endpoints + WebSocket
+├── models.py / schemas.py  # SQLAlchemy ORM / Pydantic schemas
+├── scan_runner.py          # background execution (thread pool)
+└── websocket_manager.py    # real-time event broadcast
 
-web/                        # Interface React (Vite + TypeScript + Tailwind)
+web/                        # React interface (Vite + TypeScript + Tailwind)
 ├── src/pages/              # NewScan, ScanLive, ScanReport, ScanHistory
 ├── src/components/         # AuthorizationGate, FindingCard, SeverityChart…
 └── src/hooks/              # useScans (react-query), useScanWebSocket
 ```
 
-La bibliothèque `vantis/` reste la **source de vérité** : l'API et l'interface ne font que l'exposer. Le moteur n'a reçu qu'un hook d'observation optionnel (`progress_callback`), rétro-compatible avec le CLI.
+The `vantis/` library stays the **source of truth**: the API and interface only expose it. The engine only gained an optional observation hook (`progress_callback`), backward-compatible with the CLI.
 
 ## Tests
 
 ```bash
-# Backend (moteur + API) — pytest
+# Backend (engine + API) — pytest
 pip install -e ".[api,dev]"
 pytest
 
@@ -175,11 +176,11 @@ pytest
 cd web && npm test
 ```
 
-Les tests API utilisent un moteur factice : **aucun trafic réseau n'est émis** pendant la suite de tests. Le test de `AuthorizationGate` vérifie explicitement que le bouton de lancement reste désactivé tant que la case d'autorisation n'est pas cochée.
+API tests use a fake engine: **no network traffic is emitted** during the test suite. The `AuthorizationGate` test explicitly verifies that the launch button stays disabled until the authorization box is checked.
 
-## Écrire un nouveau module
+## Writing a new module
 
-Il suffit d'ajouter une classe dans `vantis/modules/<catégorie>/` qui hérite de `ScanModule` :
+Just add a class under `vantis/modules/<category>/` that inherits from `ScanModule`:
 
 ```python
 from vantis.core.plugin_base import ScanModule
@@ -187,31 +188,31 @@ from vantis.core.report import Finding, Severity
 
 class MyModule(ScanModule):
     name = "my-module"
-    category = "web"  # ou "recon" / "cve"
+    category = "web"  # or "recon" / "cve"
 
     def run(self) -> list[Finding]:
-        # ... logique du module ...
+        # ... module logic ...
         return [Finding(module=self.name, title="...", severity=Severity.LOW, target=str(self.ctx.target))]
 ```
 
-Le moteur le découvre automatiquement au démarrage, aucune autre modification n'est nécessaire.
+The engine discovers it automatically at startup — no other change is needed.
 
-## Écrire un nouveau template CVE
+## Writing a new CVE template
 
-Les templates sont des fichiers YAML dans `templates/cve/`. Ils décrivent une requête et un matcher — voir les exemples fournis. Par conception, un template ne peut effectuer qu'une requête de **détection** (statut, header, contenu de la réponse) ; il ne peut pas encoder d'exploitation multi-étapes.
+Templates are YAML files under `templates/cve/`. They describe a request and a matcher — see the provided examples. By design a template can only perform a **detection** request (status, header, response content); it cannot encode multi-step exploitation.
 
 ## Roadmap
 
-- [ ] Détection de subdomain takeover
-- [ ] Support d'authentification (cookies/tokens) pour scanner des zones authentifiées
-- [ ] Export SARIF pour intégration CI/CD
-- [ ] Détection de secrets dans le JS exposé
-- [ ] Rate-limiting adaptatif basé sur les réponses 429
+- [ ] Subdomain takeover detection
+- [ ] Authentication support (cookies/tokens) to scan authenticated areas
+- [ ] SARIF export for CI/CD integration
+- [ ] Secret detection in exposed JavaScript
+- [ ] Adaptive rate-limiting based on 429 responses
 
-## Licence
+## License
 
-MIT — voir [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
-## Contribuer
+## Contributing
 
-Les PR sont bienvenues, notamment pour de nouveaux modules ou templates CVE. Merci de garder l'esprit du projet : détection non-destructive uniquement.
+PRs are welcome, especially for new modules or CVE templates. Please keep the project's spirit: non-destructive detection only.

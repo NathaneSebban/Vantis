@@ -6,9 +6,9 @@ import { MODULE_CATEGORIES, type ModuleCategory } from "../api/types";
 import { ApiError } from "../api/client";
 
 const MODULE_LABELS: Record<ModuleCategory, { title: string; detail: string }> = {
-  recon: { title: "Recon", detail: "sous-domaines, ports, technologies" },
-  web: { title: "Web", detail: "headers, XSS réfléchi, SQLi, chemins exposés" },
-  cve: { title: "CVE", detail: "templates YAML façon Nuclei" },
+  recon: { title: "Recon", detail: "subdomains, ports, technologies" },
+  web: { title: "Web", detail: "headers, reflected XSS, SQLi, exposed paths" },
+  cve: { title: "CVE", detail: "Nuclei-style YAML templates" },
 };
 
 interface PrefillState {
@@ -61,15 +61,15 @@ export function NewScan() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-semibold text-zinc-100">Nouveau scan</h1>
+      <h1 className="text-2xl font-semibold text-zinc-100">New scan</h1>
       <p className="mt-1 text-sm text-zinc-500">
-        Configurez la cible et les modules, puis confirmez l'autorisation pour lancer.
+        Configure the target and modules, then confirm authorization to launch.
       </p>
 
       <div className="mt-8 space-y-6">
         {/* Target */}
         <div>
-          <label className="block text-sm font-medium text-zinc-300">Cible</label>
+          <label className="block text-sm font-medium text-zinc-300">Target</label>
           <input
             type="text"
             value={target}
@@ -82,7 +82,7 @@ export function NewScan() {
         {/* Scope */}
         <div>
           <label className="block text-sm font-medium text-zinc-300">
-            Périmètre additionnel <span className="text-zinc-500">(optionnel)</span>
+            Additional scope <span className="text-zinc-500">(optional)</span>
           </label>
           <div className="mt-1.5 flex gap-2">
             <input
@@ -98,7 +98,7 @@ export function NewScan() {
               onClick={addScope}
               className="rounded-md border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
             >
-              Ajouter
+              Add
             </button>
           </div>
           {scope.length > 0 && (
@@ -117,7 +117,7 @@ export function NewScan() {
             </div>
           )}
           <p className="mt-1.5 text-xs text-zinc-600">
-            Par défaut, le périmètre est limité au domaine de la cible et ses sous-domaines.
+            By default the scope is limited to the target's domain and its subdomains.
           </p>
         </div>
 
@@ -147,7 +147,7 @@ export function NewScan() {
               );
             })}
           </div>
-          {modules.length === 0 && <p className="mt-1.5 text-xs text-red-400">Sélectionnez au moins un module.</p>}
+          {modules.length === 0 && <p className="mt-1.5 text-xs text-red-400">Select at least one module.</p>}
         </div>
 
         {/* Authorization gate — mandatory confirmation before launch */}
@@ -155,14 +155,14 @@ export function NewScan() {
           <AuthorizationGate target={target.trim()} submitting={createScan.isPending} onConfirm={launch} />
         ) : (
           <p className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-sm text-zinc-500">
-            Renseignez une cible et au moins un module pour afficher la confirmation d'autorisation.
+            Enter a target and at least one module to show the authorization confirmation.
           </p>
         )}
 
         {createScan.isError && (
           <p className="text-sm text-red-400">
-            Échec du lancement :{" "}
-            {createScan.error instanceof ApiError ? createScan.error.message : "erreur inconnue"}
+            Failed to launch:{" "}
+            {createScan.error instanceof ApiError ? createScan.error.message : "unknown error"}
           </p>
         )}
       </div>

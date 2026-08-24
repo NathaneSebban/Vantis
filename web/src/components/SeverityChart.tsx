@@ -15,7 +15,7 @@ export function SeverityChart({ counts }: { counts: SeverityCounts }) {
   })).filter((d) => d.value > 0);
 
   if (data.length === 0) {
-    return <p className="text-sm text-zinc-500">Aucun finding à visualiser.</p>;
+    return <p className="text-sm text-zinc-500">No findings to visualize.</p>;
   }
 
   return (

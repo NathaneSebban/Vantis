@@ -9,14 +9,14 @@ import { AuthorizationGate } from "./AuthorizationGate";
 describe("AuthorizationGate", () => {
   it("renders the legal warning with the target", () => {
     render(<AuthorizationGate target="https://example.com" onConfirm={vi.fn()} />);
-    expect(screen.getByText(/autorisation requise/i)).toBeInTheDocument();
+    expect(screen.getByText(/authorization required/i)).toBeInTheDocument();
     expect(screen.getByText("https://example.com")).toBeInTheDocument();
-    expect(screen.getByText(/autorisation explicite/i)).toBeInTheDocument();
+    expect(screen.getByText(/explicit authorization/i)).toBeInTheDocument();
   });
 
   it("keeps the launch button disabled until the checkbox is checked", () => {
     render(<AuthorizationGate target="https://example.com" onConfirm={vi.fn()} />);
-    const button = screen.getByRole("button", { name: /lancer le scan/i });
+    const button = screen.getByRole("button", { name: /launch scan/i });
     expect(button).toBeDisabled();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
   });
@@ -25,7 +25,7 @@ describe("AuthorizationGate", () => {
     const onConfirm = vi.fn();
     render(<AuthorizationGate target="https://example.com" onConfirm={onConfirm} />);
     // Attempt to force the action without checking the box.
-    await userEvent.click(screen.getByRole("button", { name: /lancer le scan/i }));
+    await userEvent.click(screen.getByRole("button", { name: /launch scan/i }));
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
@@ -34,7 +34,7 @@ describe("AuthorizationGate", () => {
     const user = userEvent.setup();
     render(<AuthorizationGate target="https://example.com" onConfirm={onConfirm} />);
 
-    const button = screen.getByRole("button", { name: /lancer le scan/i });
+    const button = screen.getByRole("button", { name: /launch scan/i });
     await user.click(screen.getByRole("checkbox"));
     expect(button).toBeEnabled();
 
@@ -45,7 +45,7 @@ describe("AuthorizationGate", () => {
   it("re-disables the button when the box is unchecked again", async () => {
     const user = userEvent.setup();
     render(<AuthorizationGate target="https://example.com" onConfirm={vi.fn()} />);
-    const button = screen.getByRole("button", { name: /lancer le scan/i });
+    const button = screen.getByRole("button", { name: /launch scan/i });
     const checkbox = screen.getByRole("checkbox");
 
     await user.click(checkbox);
@@ -58,6 +58,6 @@ describe("AuthorizationGate", () => {
     const user = userEvent.setup();
     render(<AuthorizationGate target="https://example.com" submitting onConfirm={vi.fn()} />);
     await user.click(screen.getByRole("checkbox"));
-    expect(screen.getByRole("button", { name: /lancement/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /launching/i })).toBeDisabled();
   });
 });
