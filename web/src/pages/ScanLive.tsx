@@ -48,7 +48,7 @@ export function ScanLive() {
         {done && (
           <Link
             to={`/scans/${id}/report`}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+            className="btn-primary"
           >
             View report →
           </Link>
@@ -56,7 +56,7 @@ export function ScanLive() {
       </div>
 
       {/* Progress */}
-      <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+      <div className="mt-6 card p-5">
         <div className="flex items-center justify-between text-sm">
           <span className="text-zinc-400">
             {currentModule ? (
@@ -97,7 +97,7 @@ export function ScanLive() {
       </h2>
       <div className="mt-3 space-y-2">
         {findings.length === 0 && (
-          <p className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">
+          <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-[#6b6482]">
             {done ? "No findings detected." : "Waiting for the first results…"}
           </p>
         )}

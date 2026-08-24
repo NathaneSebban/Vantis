@@ -68,7 +68,7 @@ export function ScanReport() {
             <a
               key={fmt}
               href={api.reportUrl(id, fmt)}
-              className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+              className="btn-ghost"
             >
               {fmt.toUpperCase()}
             </a>
@@ -79,13 +79,13 @@ export function ScanReport() {
       {/* Summary + chart */}
       {scan && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="card p-5">
             <h2 className="text-sm font-semibold text-zinc-300">Severity breakdown</h2>
             <div className="mt-3">
               <SeverityChart counts={scan.severity_counts} />
             </div>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="card p-5">
             <h2 className="text-sm font-semibold text-zinc-300">Summary</h2>
             <dl className="mt-3 grid grid-cols-5 gap-2 text-center">
               {SEVERITY_ORDER.map((s) => (
@@ -125,7 +125,7 @@ export function ScanReport() {
         <select
           value={moduleFilter}
           onChange={(e) => setModuleFilter(e.target.value)}
-          className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300"
+          className="field w-auto"
         >
           <option value="">All modules</option>
           {modules.map((m) => (
@@ -139,7 +139,7 @@ export function ScanReport() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search…"
-          className="flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-600"
+          className="field flex-1"
         />
       </div>
 
@@ -147,7 +147,7 @@ export function ScanReport() {
       <div className="mt-4 space-y-2">
         {isLoading && <p className="text-sm text-zinc-500">Loading…</p>}
         {!isLoading && visible.length === 0 && (
-          <p className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-600">
+          <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-[#6b6482]">
             No findings match the filters.
           </p>
         )}

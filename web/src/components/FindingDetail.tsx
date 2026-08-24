@@ -5,9 +5,9 @@ import { SeverityBadge } from "./SeverityBadge";
 // Side panel showing the full detail of a finding.
 export function FindingDetail({ finding, onClose }: { finding: Finding; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <aside
-        className="h-full w-full max-w-md overflow-y-auto border-l border-zinc-800 bg-zinc-950 p-6"
+        className="h-full w-full max-w-md overflow-y-auto border-l border-violet-500/20 bg-ink-950/95 p-6 shadow-[-24px_0_60px_-24px_rgba(168,85,247,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">

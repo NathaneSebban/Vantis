@@ -61,7 +61,7 @@ export function NewScan() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-semibold text-zinc-100">New scan</h1>
+      <h1 className="text-2xl font-bold text-white">New scan</h1>
       <p className="mt-1 text-sm text-zinc-500">
         Configure the target and modules, then confirm authorization to launch.
       </p>
@@ -75,7 +75,7 @@ export function NewScan() {
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             placeholder="https://example.com"
-            className="mt-1.5 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-600"
+            className="field mt-1.5"
           />
         </div>
 
@@ -91,12 +91,12 @@ export function NewScan() {
               onChange={(e) => setScopeInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addScope())}
               placeholder="api.example.com, 10.0.0.0/24…"
-              className="flex-1 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-600"
+              className="field flex-1"
             />
             <button
               type="button"
               onClick={addScope}
-              className="rounded-md border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+              className="btn-ghost"
             >
               Add
             </button>
@@ -133,12 +133,12 @@ export function NewScan() {
                   key={m}
                   onClick={() => toggleModule(m)}
                   className={`rounded-lg border p-3 text-left transition ${
-                    on ? "border-emerald-600 bg-emerald-950/30" : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
+                    on ? "border-violet-600 bg-violet-950/30" : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-zinc-100">{MODULE_LABELS[m].title}</span>
-                    <span className={`h-4 w-4 rounded border ${on ? "border-emerald-500 bg-emerald-500" : "border-zinc-600"}`}>
+                    <span className={`h-4 w-4 rounded border ${on ? "border-violet-500 bg-violet-500" : "border-zinc-600"}`}>
                       {on && <span className="block text-center text-xs leading-4 text-white">✓</span>}
                     </span>
                   </div>
@@ -154,7 +154,7 @@ export function NewScan() {
         {targetValid && modules.length > 0 ? (
           <AuthorizationGate target={target.trim()} submitting={createScan.isPending} onConfirm={launch} />
         ) : (
-          <p className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 text-sm text-zinc-500">
+          <p className="card p-4 text-sm text-zinc-500">
             Enter a target and at least one module to show the authorization confirmation.
           </p>
         )}

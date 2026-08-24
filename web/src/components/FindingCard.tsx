@@ -16,22 +16,22 @@ export function FindingCard({ finding, onClick, compact }: Props) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-left transition hover:border-zinc-700 hover:bg-zinc-900 ${
+      className={`card card-hover group flex w-full items-start gap-3 overflow-hidden p-3.5 text-left ${
         onClick ? "cursor-pointer" : "cursor-default"
       }`}
-      style={{ borderLeft: `3px solid ${meta.hex}` }}
+      style={{ borderLeft: `2px solid ${meta.hex}`, boxShadow: `inset 3px 0 12px -6px ${meta.glow}` }}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <SeverityBadge severity={finding.severity} />
-          <span className="truncate font-medium text-zinc-100">{finding.title}</span>
+          <span className="truncate font-medium text-[#ece8f5] group-hover:text-white">{finding.title}</span>
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-500">
-          <span className="font-mono">{finding.module}</span>
-          <span className="truncate">{finding.matched_at || finding.target}</span>
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[#7c7391]">
+          <span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[#a79fb8]">{finding.module}</span>
+          <span className="truncate pt-0.5">{finding.matched_at || finding.target}</span>
         </div>
         {!compact && finding.description && (
-          <p className="mt-1.5 line-clamp-2 text-sm text-zinc-400">{finding.description}</p>
+          <p className="mt-2 line-clamp-2 text-sm text-[#9a91b4]">{finding.description}</p>
         )}
       </div>
     </button>

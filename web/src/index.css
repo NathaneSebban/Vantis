@@ -1,9 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
+  --bg: #050308;
+  --violet: #a855f7;
+  --violet-bright: #c084fc;
+  --border: rgba(168, 85, 247, 0.16);
 }
 
 html,
@@ -12,6 +18,127 @@ body,
   height: 100%;
 }
 
-body {
-  @apply bg-zinc-950 text-zinc-200 font-sans antialiased;
+@layer base {
+  body {
+    @apply bg-ink-950 text-[#e7e2f0] font-sans antialiased;
+    background-color: var(--bg);
+    overflow-x: hidden;
+  }
+
+  /* Drifting neon aurora — a soft haze of violet/indigo/magenta light that
+     slowly wanders behind everything. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -25%;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 42% at 20% 25%, rgba(139, 92, 246, 0.35), transparent 60%),
+      radial-gradient(32% 38% at 82% 22%, rgba(217, 70, 239, 0.22), transparent 62%),
+      radial-gradient(45% 48% at 68% 82%, rgba(99, 102, 241, 0.28), transparent 60%),
+      radial-gradient(30% 34% at 30% 88%, rgba(34, 211, 238, 0.14), transparent 60%);
+    filter: blur(70px) saturate(130%);
+    animation: drift 26s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* Fine technical grid, masked to fade toward the edges. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(168, 85, 247, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(168, 85, 247, 0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 55%, transparent 100%);
+    mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 55%, transparent 100%);
+  }
+
+  ::selection {
+    background: rgba(168, 85, 247, 0.35);
+    color: #fff;
+  }
+
+  /* Slim neon scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(168, 85, 247, 0.4) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(rgba(168, 85, 247, 0.5), rgba(99, 102, 241, 0.5));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(rgba(192, 132, 252, 0.8), rgba(139, 92, 246, 0.8));
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Frosted panel with a faint violet edge and depth. */
+  .card {
+    @apply rounded-xl border bg-white/[0.03] backdrop-blur-xl;
+    border-color: var(--border);
+    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 24px 48px -30px rgba(0, 0, 0, 0.9);
+  }
+  .card-hover {
+    @apply transition duration-200;
+  }
+  .card-hover:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.25), 0 0 34px -10px rgba(168, 85, 247, 0.45),
+      0 24px 48px -30px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Primary neon action button. */
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition duration-200 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, #7c3aed, #a855f7 55%, #c026d3);
+    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.3), 0 8px 24px -8px rgba(168, 85, 247, 0.7);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.6), 0 10px 30px -6px rgba(192, 132, 252, 0.9);
+    filter: brightness(1.08);
+  }
+  .btn-primary:disabled {
+    background: #1c1630;
+    color: #6b6482;
+    box-shadow: none;
+  }
+
+  /* Secondary / ghost button. */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#c9c2dc] transition;
+    border-color: var(--border);
+  }
+  .btn-ghost:hover {
+    border-color: rgba(168, 85, 247, 0.45);
+    background: rgba(168, 85, 247, 0.08);
+    color: #fff;
+  }
+
+  /* Inputs / selects */
+  .field {
+    @apply w-full rounded-lg border bg-ink-900/70 px-3 py-2 text-sm text-[#e7e2f0] outline-none transition placeholder:text-[#6b6482];
+    border-color: var(--border);
+  }
+  .field:focus {
+    border-color: rgba(168, 85, 247, 0.7);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+  }
+
+  .neon-text {
+    color: var(--violet-bright);
+    text-shadow: 0 0 18px rgba(192, 132, 252, 0.75);
+  }
 }

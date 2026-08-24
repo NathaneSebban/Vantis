@@ -16,7 +16,7 @@ export function AuthorizationGate({ target, submitting, onConfirm }: Props) {
   const canLaunch = confirmed && !submitting;
 
   return (
-    <div className="rounded-lg border border-amber-700/50 bg-amber-950/30 p-4">
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 shadow-[inset_0_0_30px_-14px_rgba(245,158,11,0.5)]">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-300">
         <span aria-hidden>⚠</span> Authorization required
       </h2>
@@ -44,9 +44,9 @@ export function AuthorizationGate({ target, submitting, onConfirm }: Props) {
         onClick={() => canLaunch && onConfirm()}
         disabled={!canLaunch}
         aria-disabled={!canLaunch}
-        className="mt-4 w-full rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition enabled:hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+        className="btn-primary mt-4 w-full"
       >
-        {submitting ? "Launching…" : "Launch scan"}
+        {submitting ? "Launching…" : "▶  Launch scan"}
       </button>
       <p id="auth-help" className="mt-2 text-xs text-amber-200/50">
         The button stays disabled until the box is checked.

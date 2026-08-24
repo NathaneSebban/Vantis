@@ -22,13 +22,13 @@ export function ScanHistory() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-100">Scan history</h1>
-        <Link to="/new" className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+        <h1 className="text-2xl font-bold text-white">Scan history</h1>
+        <Link to="/new" className="btn-primary">
           + New scan
         </Link>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-zinc-800">
+      <div className="mt-6 card overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-500">
             <tr>
@@ -59,7 +59,7 @@ export function ScanHistory() {
                 <td className="px-4 py-3">
                   <Link
                     to={scan.status === "running" || scan.status === "queued" ? `/scans/${scan.scan_id}` : `/scans/${scan.scan_id}/report`}
-                    className="font-mono text-zinc-100 hover:text-emerald-400"
+                    className="font-mono text-zinc-100 hover:text-violet-300"
                   >
                     {scan.target}
                   </Link>
@@ -86,7 +86,7 @@ export function ScanHistory() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => relaunch(scan)} className="text-xs text-zinc-400 hover:text-emerald-400">
+                    <button onClick={() => relaunch(scan)} className="text-xs text-zinc-400 hover:text-violet-300">
                       Relaunch
                     </button>
                     <button
