@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     # Rate limiting on scan creation, to blunt abuse if exposed publicly.
     scan_rate_limit: str = "5/hour"
 
+    # --- Optional hardening (all OFF by default: local dev is unaffected) ---
+
+    # API key. When set (non-empty), every /api/scans request must present it
+    # via the X-API-Key header (or ?key= for the WebSocket). Leave empty to
+    # disable auth. SET THIS before exposing the API beyond localhost.
+    api_key: str = ""
+
+    # When true, reject targets that resolve to a literal private, loopback,
+    # link-local or reserved IP (basic anti-SSRF). OFF by default because
+    # authorized internal pentests legitimately target internal hosts.
+    block_private_targets: bool = False
+
     # Scan engine defaults (mirrors the CLI defaults).
     http_timeout: float = 10.0
     rate_limit_delay: float = 0.3

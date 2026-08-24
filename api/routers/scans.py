@@ -14,6 +14,7 @@ from api.models import FindingRow, ScanRow, ScanStatus
 from api.rate_limit import limiter
 from api.config import get_settings
 from api.scan_runner import scan_manager
+from api.security import require_api_key, websocket_authorized
 from api.schemas import (
     FindingOut,
     ScanCreate,
@@ -71,7 +72,7 @@ def _get_scan_or_404(db: Session, scan_id: str) -> ScanRow:
 
 # -- routes -----------------------------------------------------------
 
-@router.post("", response_model=ScanCreatedResponse, status_code=202)
+@router.post("", response_model=ScanCreatedResponse, status_code=202, dependencies=[Depends(require_api_key)])
 @limiter.limit(get_settings().scan_rate_limit)
 def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get_db)) -> ScanCreatedResponse:
     """Queue a scan. The ``authorized`` flag is the web equivalent of the
@@ -100,7 +101,7 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
     return ScanCreatedResponse(scan_id=scan_id, status=ScanStatus.QUEUED)
 
 
-@router.get("", response_model=ScanListResponse)
+@router.get("", response_model=ScanListResponse, dependencies=[Depends(require_api_key)])
 def list_scans(
     db: Session = Depends(get_db),
     limit: int = Query(20, ge=1, le=100),
@@ -118,7 +119,7 @@ def list_scans(
     )
 
 
-@router.get("/{scan_id}", response_model=ScanDetail)
+@router.get("/{scan_id}", response_model=ScanDetail, dependencies=[Depends(require_api_key)])
 def get_scan(scan_id: str, db: Session = Depends(get_db)) -> ScanDetail:
     scan = _get_scan_or_404(db, scan_id)
     summary = _summary(db, scan)
@@ -131,7 +132,7 @@ def get_scan(scan_id: str, db: Session = Depends(get_db)) -> ScanDetail:
     )
 
 
-@router.get("/{scan_id}/findings", response_model=list[FindingOut])
+@router.get("/{scan_id}/findings", response_model=list[FindingOut], dependencies=[Depends(require_api_key)])
 def get_findings(
     scan_id: str,
     db: Session = Depends(get_db),
@@ -156,7 +157,7 @@ def get_findings(
     return [FindingOut(**r.to_dict()) for r in rows]
 
 
-@router.get("/{scan_id}/report")
+@router.get("/{scan_id}/report", dependencies=[Depends(require_api_key)])
 def get_report(
     scan_id: str,
     db: Session = Depends(get_db),
@@ -203,7 +204,7 @@ def get_report(
     )
 
 
-@router.delete("/{scan_id}", status_code=200)
+@router.delete("/{scan_id}", status_code=200, dependencies=[Depends(require_api_key)])
 def delete_scan(scan_id: str, db: Session = Depends(get_db)) -> dict:
     """Cancel a running scan if possible; otherwise delete its history."""
     scan = _get_scan_or_404(db, scan_id)
@@ -222,6 +223,10 @@ async def scan_live(websocket: WebSocket, scan_id: str) -> None:
 
     The socket stays open until the client disconnects; the scan thread pushes
     events through the WebSocketManager."""
+    # Auth (when enabled) happens before accept() — an unauthorized handshake is
+    # closed without ever joining the broadcast set.
+    if not await websocket_authorized(websocket):
+        return
     await ws_manager.connect(scan_id, websocket)
     try:
         while True:

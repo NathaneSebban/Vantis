@@ -72,7 +72,10 @@ class FindingRow(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     evidence: Mapped[str] = mapped_column(Text, default="")
     remediation: Mapped[str] = mapped_column(Text, default="")
-    references: Mapped[str] = mapped_column(Text, default="")  # newline-separated
+    # DB column is "refs" (not "references"): "references" is a reserved SQL
+    # word — avoiding it keeps the schema portable (MySQL/MariaDB/Postgres)
+    # without relying on identifier quoting. The API still exposes "references".
+    refs: Mapped[str] = mapped_column("refs", Text, default="")  # newline-separated
     matched_at: Mapped[str] = mapped_column(String(512), default="")
     timestamp: Mapped[str] = mapped_column(String(40), default="")
 
@@ -88,7 +91,7 @@ class FindingRow(Base):
             "description": self.description,
             "evidence": self.evidence,
             "remediation": self.remediation,
-            "references": [r for r in self.references.split("\n") if r],
+            "references": [r for r in self.refs.split("\n") if r],
             "matched_at": self.matched_at,
             "timestamp": self.timestamp,
         }

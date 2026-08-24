@@ -106,6 +106,33 @@ Le serveur de dev Vite proxifie `/api` (REST + WebSocket) vers `http://localhost
 
 Le scan tourne en tâche de fond ; l'API répond immédiatement et l'avancement est poussé en direct via le WebSocket.
 
+## Configuration (variables d'environnement)
+
+L'API se configure entièrement par l'environnement (ou un fichier `.env` à la racine, gitignoré). Tout a des valeurs par défaut adaptées au développement local.
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `VANTIS_DATABASE_URL` | `sqlite:///./vantis.db` | Base de données. Pour MySQL/WAMP : `mysql+pymysql://root:@localhost:3306/vantis` (nécessite `pip install -e ".[api,mysql]"`) |
+| `VANTIS_CORS_ORIGINS` | origines Vite | Origines autorisées (jamais `*`), séparées par des virgules |
+| `VANTIS_SCAN_RATE_LIMIT` | `5/hour` | Limite de création de scans par IP |
+| `VANTIS_API_KEY` | *(vide = désactivé)* | Si défini, **authentification obligatoire** : header `X-API-Key` (et `?key=` pour le WebSocket). Côté frontend, fournir la même valeur via `VITE_API_KEY`. **À définir avant toute exposition réseau.** |
+| `VANTIS_BLOCK_PRIVATE_TARGETS` | `false` | Si `true`, refuse les cibles en IP privée/loopback/réservée (anti-SSRF basique). Désactivé par défaut car un pentest interne autorisé vise légitimement des hôtes internes. |
+
+### Utiliser MySQL / MariaDB (ex. WAMP + phpMyAdmin)
+
+```bash
+# 1) Driver
+pip install -e ".[api,mysql]"
+
+# 2) Créer la base "vantis" (interclassement utf8mb4_unicode_ci) dans phpMyAdmin
+
+# 3) Pointer l'API dessus (dans .env) puis migrer
+#    VANTIS_DATABASE_URL=mysql+pymysql://root:@localhost:3306/vantis
+alembic upgrade head
+```
+
+Le driver SQLite reste le défaut : aucune installation supplémentaire n'est requise pour démarrer.
+
 ## Architecture
 
 ```

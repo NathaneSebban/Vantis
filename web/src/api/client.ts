@@ -15,6 +15,9 @@ import type {
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+// Optional API key, sent only when the backend has auth enabled. Left unset in
+// local dev (auth disabled server-side).
+const API_KEY = import.meta.env.VITE_API_KEY ?? "";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -25,7 +28,11 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+      ...(init?.headers ?? {}),
+    },
     ...init,
   });
   if (!res.ok) {
@@ -74,12 +81,15 @@ export const api = {
   // Build the ws:// URL for the live stream from the current origin (or the
   // configured API base).
   liveSocketUrl(id: string): string {
+    // Browsers can't set headers on a WebSocket handshake, so the key (when
+    // configured) travels as a query parameter.
+    const query = API_KEY ? `?key=${encodeURIComponent(API_KEY)}` : "";
     if (BASE) {
       const url = new URL(BASE);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-      return `${url.origin}/api/scans/${id}/live`;
+      return `${url.origin}/api/scans/${id}/live${query}`;
     }
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${proto}//${window.location.host}/api/scans/${id}/live`;
+    return `${proto}//${window.location.host}/api/scans/${id}/live${query}`;
   },
 };

@@ -18,6 +18,13 @@ services:
       VANTIS_CORS_ORIGINS: "http://localhost:8080"
       VANTIS_DATABASE_URL: "sqlite:////data/vantis.db"
       VANTIS_SCAN_RATE_LIMIT: "5/hour"
+      # --- Optional hardening (uncomment before any non-local exposure) ---
+      # Require this key on every request (X-API-Key header, ?key= for the WS).
+      # If you set it, also pass VITE_API_KEY with the same value to the web
+      # build (build arg / env) so the frontend authenticates.
+      # VANTIS_API_KEY: "change-me"
+      # Block scans of private/loopback/reserved IPs (basic anti-SSRF):
+      # VANTIS_BLOCK_PRIVATE_TARGETS: "true"
     volumes:
       - vantis-data:/data
     expose:

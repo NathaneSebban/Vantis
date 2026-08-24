@@ -50,7 +50,7 @@ def upgrade() -> None:
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('evidence', sa.Text(), nullable=False),
     sa.Column('remediation', sa.Text(), nullable=False),
-    sa.Column('references', sa.Text(), nullable=False),
+    sa.Column('refs', sa.Text(), nullable=False),
     sa.Column('matched_at', sa.String(length=512), nullable=False),
     sa.Column('timestamp', sa.String(length=40), nullable=False),
     sa.ForeignKeyConstraint(['scan_id'], ['scans.id'], ondelete='CASCADE'),

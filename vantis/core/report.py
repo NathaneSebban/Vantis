@@ -3,6 +3,7 @@ Finding model and report generation (JSON, HTML, Markdown).
 """
 from __future__ import annotations
 
+import html
 import json
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -103,6 +104,9 @@ class Report:
             "critical": "#7f1d1d", "high": "#b91c1c", "medium": "#b45309",
             "low": "#1d4ed8", "info": "#374151",
         }
+        # Escape every field derived from a finding: evidence/title/etc. can
+        # contain content reflected from the scanned target (e.g. an XSS
+        # payload). Without escaping, opening the report would execute it.
         rows = []
         for f in self.sorted_findings():
             color = sev_colors[f.severity.value]
@@ -110,15 +114,16 @@ class Report:
             <tr>
               <td><span style="background:{color};color:#fff;padding:2px 8px;
                   border-radius:4px;font-size:12px;font-weight:600;">
-                  {f.severity.value.upper()}</span></td>
-              <td>{f.title}</td>
-              <td>{f.module}</td>
-              <td>{f.matched_at or f.target}</td>
-              <td>{f.description}</td>
+                  {html.escape(f.severity.value.upper())}</span></td>
+              <td>{html.escape(f.title)}</td>
+              <td>{html.escape(f.module)}</td>
+              <td>{html.escape(f.matched_at or f.target)}</td>
+              <td>{html.escape(f.description)}</td>
             </tr>""")
-        html = f"""<!DOCTYPE html>
+        escaped_target = html.escape(self.target)
+        html_doc = f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="utf-8">
-<title>Vantis Report — {self.target}</title>
+<title>Vantis Report — {escaped_target}</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, sans-serif; margin: 40px; background:#f8fafc; color:#0f172a;}}
   h1 {{ font-size: 22px; }}
@@ -128,11 +133,11 @@ class Report:
   .meta {{ color:#64748b; margin-bottom: 20px; font-size: 13px;}}
 </style></head>
 <body>
-  <h1>Vantis Report — {self.target}</h1>
+  <h1>Vantis Report — {escaped_target}</h1>
   <div class="meta">Generated {datetime.now(timezone.utc).isoformat()} · {len(self.findings)} findings</div>
   <table>
     <tr><th>Severity</th><th>Title</th><th>Module</th><th>Location</th><th>Description</th></tr>
     {''.join(rows)}
   </table>
 </body></html>"""
-        Path(path).write_text(html, encoding="utf-8")
+        Path(path).write_text(html_doc, encoding="utf-8")

@@ -13,6 +13,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from api.config import get_settings
 from api.main import app
 from vantis.core.report import Finding, Severity
 
@@ -153,6 +154,36 @@ def test_delete_completed_scan_removes_history(client):
 
 def test_get_missing_scan_is_404(client):
     assert client.get("/api/scans/does-not-exist").status_code == 404
+
+
+# -- optional hardening (opt-in via settings) ------------------------
+
+def test_api_key_enforced_when_configured(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "api_key", "s3cret")
+    body = {"target": "https://example.com", "authorized": True, "modules": ["web"]}
+
+    # Missing key -> 401.
+    assert client.post("/api/scans", json=body).status_code == 401
+    # Wrong key -> 401.
+    assert client.post("/api/scans", headers={"X-API-Key": "nope"}, json=body).status_code == 401
+    # Correct key -> accepted.
+    ok = client.post("/api/scans", headers={"X-API-Key": "s3cret"}, json=body)
+    assert ok.status_code == 202
+    # Reads are protected too.
+    assert client.get("/api/scans").status_code == 401
+    assert client.get("/api/scans", headers={"X-API-Key": "s3cret"}).status_code == 200
+
+
+def test_private_target_blocked_when_enabled(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "block_private_targets", True)
+
+    for blocked in ("http://127.0.0.1", "http://169.254.169.254", "http://10.0.0.5", "http://localhost"):
+        r = client.post("/api/scans", json={"target": blocked, "authorized": True, "modules": ["web"]})
+        assert r.status_code == 422, f"{blocked} should be blocked"
+
+    # A public target is still accepted.
+    ok = client.post("/api/scans", json={"target": "https://example.com", "authorized": True, "modules": ["web"]})
+    assert ok.status_code == 202
 
 
 # -- live WebSocket ---------------------------------------------------

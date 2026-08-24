@@ -6,14 +6,34 @@ touched.
 """
 from __future__ import annotations
 
+import ipaddress
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from api.config import get_settings
 from vantis.core.target import Target
 
 VALID_CATEGORIES = {"recon", "web", "cve"}
+
+_LOCALHOST_NAMES = {"localhost", "localhost.localdomain", "ip6-localhost"}
+
+
+def _host_is_private(host: str) -> bool:
+    """True if the host is a literal private/loopback/link-local/reserved IP or
+    an obvious localhost name. Hostnames are not DNS-resolved here — this is a
+    coarse literal-IP guard, not a full anti-SSRF resolver."""
+    if host.lower() in _LOCALHOST_NAMES:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return (
+        ip.is_private or ip.is_loopback or ip.is_link_local
+        or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+    )
 
 
 class ScanCreate(BaseModel):
@@ -37,9 +57,15 @@ class ScanCreate(BaseModel):
         # Reuse the library's own validation so the API and CLI agree on what
         # a plausible target is — rejected here, before any scan is scheduled.
         try:
-            Target(raw=v)
+            target = Target(raw=v)
         except ValueError as e:
             raise ValueError(str(e)) from e
+        # Optional anti-SSRF guard (off by default).
+        if get_settings().block_private_targets and _host_is_private(target.host):
+            raise ValueError(
+                "target resolves to a private/loopback/reserved address, which is "
+                "blocked by this server's policy (VANTIS_BLOCK_PRIVATE_TARGETS)"
+            )
         return v
 
     @field_validator("modules")

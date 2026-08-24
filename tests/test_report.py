@@ -52,3 +52,22 @@ def test_html_export(tmp_path: Path):
     content = out.read_text()
     assert "<html" in content
     assert "Critical issue" in content
+
+
+def test_html_export_escapes_finding_fields(tmp_path: Path):
+    # A finding can carry content reflected from the scanned target. The HTML
+    # report must escape it so opening the report never executes injected markup.
+    r = Report(target="example.com")
+    r.add(Finding(
+        module="reflected-xss",
+        title="<script>alert(1)</script>",
+        severity=Severity.HIGH,
+        target="example.com",
+        description="param <img src=x onerror=alert(1)>",
+    ))
+    out = tmp_path / "report.html"
+    r.to_html(out)
+    content = out.read_text()
+    assert "<script>alert(1)</script>" not in content
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+    assert "onerror=alert(1)>" not in content

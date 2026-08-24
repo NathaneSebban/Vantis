@@ -45,7 +45,7 @@ def _finding_to_row(scan_id: str, f: Finding) -> FindingRow:
         description=d["description"],
         evidence=d["evidence"],
         remediation=d["remediation"],
-        references="\n".join(d.get("references") or []),
+        refs="\n".join(d.get("references") or []),
         matched_at=d["matched_at"],
         timestamp=d["timestamp"],
     )
@@ -119,6 +119,23 @@ class ScanManager:
         db = SessionLocal()
         cancel_flag = self._cancel_flags.get(scan_id)
 
+        def safe_commit() -> bool:
+            """Commit, rolling back on failure so the session stays usable.
+
+            The engine swallows non-cancellation exceptions raised by this
+            callback (to protect scans from broken observers), which would
+            otherwise leave a failed commit's session in a broken state and
+            cascade into every later write. Handling the error here keeps the
+            session healthy and makes a lost write visible in the logs rather
+            than silent."""
+            try:
+                db.commit()
+                return True
+            except Exception as e:  # noqa: BLE001 - persistence hiccup (e.g. lock)
+                db.rollback()
+                print(f"[!] scan {scan_id}: DB commit failed, rolled back: {e}")
+                return False
+
         def progress(event: str, payload: dict) -> None:
             # Cooperative cancellation: checked at each module boundary.
             if cancel_flag is not None and cancel_flag.is_set() and event == "module_start":
@@ -129,20 +146,20 @@ class ScanManager:
                 if scan:
                     scan.current_module = payload["module"]
                     scan.modules_total = payload["total"]
-                    db.commit()
+                    safe_commit()
                 self._push_ws(scan_id, {"type": "module_start", **_public(payload)})
 
             elif event == "finding":
                 f: Finding = payload["finding"]
                 db.add(_finding_to_row(scan_id, f))
-                db.commit()
-                self._push_ws(scan_id, {"type": "finding", "finding": f.to_dict()})
+                if safe_commit():
+                    self._push_ws(scan_id, {"type": "finding", "finding": f.to_dict()})
 
             elif event == "module_end":
                 scan = db.get(ScanRow, scan_id)
                 if scan:
                     scan.modules_done = payload["index"]
-                    db.commit()
+                    safe_commit()
                 self._push_ws(scan_id, {"type": "module_end", **_public(payload)})
 
             elif event == "scan_end":

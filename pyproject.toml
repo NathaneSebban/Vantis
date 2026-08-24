@@ -27,6 +27,10 @@ api = [
     "slowapi>=0.1.9",
     "websockets>=12.0",
 ]
+# Optional MySQL/MariaDB driver (e.g. a local WAMP/phpMyAdmin database).
+# Enable with: pip install -e ".[api,mysql]" and set VANTIS_DATABASE_URL to
+# mysql+pymysql://user:pass@localhost:3306/vantis
+mysql = ["PyMySQL>=1.1"]
 
 [project.scripts]
 vantis = "vantis.cli:main"
