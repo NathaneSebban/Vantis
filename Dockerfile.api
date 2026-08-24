@@ -1,0 +1,32 @@
+# Backend image: the Vantis library + FastAPI REST API.
+#
+# Installed in editable mode on purpose: the CVE runner locates its templates
+# relative to the package source (templates/cve next to vantis/), so keeping the
+# source tree in place — rather than copying into site-packages — keeps template
+# discovery working inside the container.
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# Install dependencies first for better layer caching.
+COPY pyproject.toml README.md ./
+COPY vantis ./vantis
+COPY api ./api
+COPY migrations ./migrations
+COPY templates ./templates
+COPY alembic.ini ./
+
+RUN pip install -e ".[api]"
+
+# SQLite database lives here; mount a volume to persist it.
+ENV VANTIS_DATABASE_URL=sqlite:////data/vantis.db
+RUN mkdir -p /data
+
+EXPOSE 8000
+
+# Apply migrations, then serve. `--proxy-headers` lets uvicorn trust the
+# X-Forwarded-* headers set by the nginx frontend.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn api.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]

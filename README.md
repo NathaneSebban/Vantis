@@ -7,6 +7,14 @@ Scanner de vulnérabilités modulaire à plugins, combinant :
 
 Conçu pour le **bug bounty** et les tests d'intrusion **autorisés**.
 
+Vantis s'utilise de deux façons, au choix :
+- **CLI** — un scanner en ligne de commande autonome (aucune dépendance web).
+- **Stack web** — une **API REST** (FastAPI) et une **interface React** pour lancer des scans depuis le navigateur, suivre les résultats **en temps réel** (WebSocket) et parcourir l'historique.
+
+<!-- SCREENSHOT -->
+<!-- Remplacez cette ligne par une capture/GIF de l'interface, ex :
+     ![Interface Vantis](docs/screenshot.png) -->
+
 ## ⚠️ Avertissement légal — à lire avant toute utilisation
 
 **Ce projet ne doit être utilisé que sur des cibles pour lesquelles vous avez une autorisation explicite** :
@@ -14,9 +22,18 @@ un programme de bug bounty dont le scope couvre la cible, un contrat de pentest 
 
 Scanner un système sans autorisation est **illégal dans la plupart des juridictions**, y compris pour de la reconnaissance passive agressive ou des tests non-destructifs. L'outil affiche un avertissement et demande une confirmation explicite avant chaque scan — ce n'est pas un détail cosmétique, c'est une garde-fou volontaire.
 
+Cette garde-fou existe partout :
+- **CLI** — prompt interactif d'autorisation (ou drapeau `--yes-i-am-authorized` que vous tapez vous-même).
+- **API** — le champ `"authorized": true` est **obligatoire** dans `POST /api/scans` ; sinon la requête est refusée (400).
+- **Interface web** — une case à cocher explicite « Je confirme être autorisé à tester cette cible », non contournable : le bouton *Lancer le scan* reste désactivé tant qu'elle n'est pas cochée.
+
 L'auteur décline toute responsabilité en cas d'utilisation non autorisée de cet outil.
 
 ## Installation
+
+### Option A — CLI seul (le plus léger)
+
+Aucune dépendance web, juste Python ≥ 3.10 :
 
 ```bash
 git clone https://github.com/<votre-user>/vantis.git
@@ -24,7 +41,7 @@ cd vantis
 pip install -e .
 ```
 
-## Utilisation
+Utilisation :
 
 ```bash
 # Scan complet (recon + web + cve)
@@ -42,6 +59,53 @@ vantis --target https://exemple-autorise.com -v --output rapport.json
 
 À l'exécution, l'outil demande une confirmation explicite d'autorisation avant de lancer le moindre test actif.
 
+### Option B — Stack web complète via Docker (le plus simple à démontrer)
+
+Une seule commande construit et lance l'API et l'interface :
+
+```bash
+docker compose up --build
+```
+
+Puis ouvrez :
+- **Interface web** : <http://localhost:8080>
+- **API REST** : <http://localhost:8080/api>
+- **Documentation interactive (Swagger)** : <http://localhost:8080/api/docs>
+
+Le frontend (nginx) sert l'application et fait office de reverse-proxy vers l'API, y compris pour le WebSocket temps réel — le navigateur ne parle qu'à une seule origine, sans CORS à configurer. La base SQLite est persistée dans un volume Docker.
+
+### Option C — Stack web en développement (hot-reload)
+
+Pour développer, on lance les deux serveurs séparément :
+
+```bash
+# 1) API (terminal 1)
+pip install -e ".[api,dev]"
+alembic upgrade head
+uvicorn api.main:app --reload            # http://localhost:8000  (docs: /docs)
+
+# 2) Frontend (terminal 2)
+cd web
+npm install
+npm run dev                              # http://localhost:5173
+```
+
+Le serveur de dev Vite proxifie `/api` (REST + WebSocket) vers `http://localhost:8000`.
+
+## API REST — aperçu
+
+| Méthode | Route | Rôle |
+|--------|-------|------|
+| `POST` | `/api/scans` | Lance un scan (`authorized: true` obligatoire) → `202` + `scan_id` |
+| `GET` | `/api/scans` | Historique paginé |
+| `GET` | `/api/scans/{id}` | Statut + progression (module en cours, findings) |
+| `GET` | `/api/scans/{id}/findings` | Findings, filtrables `?severity=` et `?module=` |
+| `GET` | `/api/scans/{id}/report?format=json\|html\|md` | Export du rapport |
+| `DELETE` | `/api/scans/{id}` | Annule un scan en cours, ou supprime l'historique |
+| `WS` | `/api/scans/{id}/live` | Flux temps réel des findings pendant le scan |
+
+Le scan tourne en tâche de fond ; l'API répond immédiatement et l'avancement est poussé en direct via le WebSocket.
+
 ## Architecture
 
 ```
@@ -57,7 +121,34 @@ vantis/
 │   └── cve/               # template_engine.py (moteur) + runner.py (module)
 └── utils/
     └── http_client.py     # client HTTP partagé, rate-limité, User-Agent identifiable
+
+api/                        # API REST (FastAPI) — adapte le moteur pour le web
+├── main.py                 # app FastAPI, CORS, rate-limiting, cycle de vie
+├── routers/scans.py        # endpoints /api/scans + WebSocket
+├── models.py / schemas.py  # ORM SQLAlchemy / schémas Pydantic
+├── scan_runner.py          # exécution en tâche de fond (thread pool)
+└── websocket_manager.py    # diffusion des events en temps réel
+
+web/                        # Interface React (Vite + TypeScript + Tailwind)
+├── src/pages/              # NewScan, ScanLive, ScanReport, ScanHistory
+├── src/components/         # AuthorizationGate, FindingCard, SeverityChart…
+└── src/hooks/              # useScans (react-query), useScanWebSocket
 ```
+
+La bibliothèque `vantis/` reste la **source de vérité** : l'API et l'interface ne font que l'exposer. Le moteur n'a reçu qu'un hook d'observation optionnel (`progress_callback`), rétro-compatible avec le CLI.
+
+## Tests
+
+```bash
+# Backend (moteur + API) — pytest
+pip install -e ".[api,dev]"
+pytest
+
+# Frontend — Vitest + React Testing Library
+cd web && npm test
+```
+
+Les tests API utilisent un moteur factice : **aucun trafic réseau n'est émis** pendant la suite de tests. Le test de `AuthorizationGate` vérifie explicitement que le bouton de lancement reste désactivé tant que la case d'autorisation n'est pas cochée.
 
 ## Écrire un nouveau module
 

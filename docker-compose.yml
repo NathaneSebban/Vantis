@@ -1,0 +1,38 @@
+# One-command stack: `docker compose up --build`
+#
+#   Frontend (nginx + built React app) ....... http://localhost:8080
+#   API (FastAPI, proxied under /api) ........ http://localhost:8080/api
+#   Interactive API docs ..................... http://localhost:8080/api/docs
+#
+# The frontend proxies /api (REST + WebSocket) to the api service, so the
+# browser only ever talks to http://localhost:8080 — no CORS to configure.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      # Behind the nginx proxy the request is same-origin, but declare the
+      # frontend origin explicitly anyway (never "*").
+      VANTIS_CORS_ORIGINS: "http://localhost:8080"
+      VANTIS_DATABASE_URL: "sqlite:////data/vantis.db"
+      VANTIS_SCAN_RATE_LIMIT: "5/hour"
+    volumes:
+      - vantis-data:/data
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  vantis-data:
