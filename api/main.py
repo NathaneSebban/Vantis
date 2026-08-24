@@ -17,8 +17,9 @@ from slowapi.errors import RateLimitExceeded
 from api.config import get_settings
 from api.database import Base, engine
 from api.rate_limit import limiter
-from api.routers import scans
+from api.routers import scans, schedules
 from api.scan_runner import scan_manager
+from api.scheduler import scheduler
 
 settings = get_settings()
 
@@ -32,9 +33,11 @@ async def lifespan(app: FastAPI):
     # Hand the running event loop to the scan manager so worker threads can
     # push WebSocket events back onto it.
     scan_manager.bind_loop(asyncio.get_running_loop())
+    scheduler.start()
     try:
         yield
     finally:
+        scheduler.stop()
         scan_manager.shutdown()
 
 
@@ -64,6 +67,7 @@ app.add_middleware(
 )
 
 app.include_router(scans.router)
+app.include_router(schedules.router)
 
 
 @app.get("/api/health", tags=["meta"])

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # authorized internal pentests legitimately target internal hosts.
     block_private_targets: bool = False
 
+    # Outbound webhook for scan-completion notifications (Slack/Discord/generic).
+    # Empty = disabled. Fires only when findings reach webhook_min_severity.
+    webhook_url: str = ""
+    webhook_min_severity: str = "high"
+
     # Scan engine defaults (mirrors the CLI defaults).
     http_timeout: float = 10.0
     rate_limit_delay: float = 0.3

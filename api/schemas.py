@@ -153,6 +153,52 @@ class FindingStatusUpdate(BaseModel):
         return v
 
 
+class ScheduleCreate(BaseModel):
+    target: str
+    scope: list[str] = Field(default_factory=list)
+    modules: list[str] = Field(default_factory=lambda: ["recon", "web", "cve"])
+    interval_minutes: int = Field(..., ge=5, description="Minimum 5 minutes")
+    authorized: bool = Field(..., description="Authorization covering every future run")
+
+    @field_validator("target")
+    @classmethod
+    def _v_target(cls, v: str) -> str:
+        v = v.strip()
+        try:
+            target = Target(raw=v)
+        except ValueError as e:
+            raise ValueError(str(e)) from e
+        if get_settings().block_private_targets and _host_is_private(target.host):
+            raise ValueError("target blocked by private-address policy")
+        return v
+
+    @field_validator("modules")
+    @classmethod
+    def _v_modules(cls, v: list[str]) -> list[str]:
+        cleaned = [m.strip().lower() for m in v if m.strip()]
+        unknown = [m for m in cleaned if m not in VALID_CATEGORIES]
+        if not cleaned or unknown:
+            raise ValueError("invalid module categories")
+        return cleaned
+
+
+class ScheduleOut(BaseModel):
+    id: str
+    target: str
+    scope: list[str]
+    modules: list[str]
+    interval_minutes: int
+    enabled: bool
+    created_at: datetime
+    next_run_at: datetime
+    last_run_at: Optional[datetime] = None
+    last_scan_id: str = ""
+
+
+class ScheduleUpdate(BaseModel):
+    enabled: bool
+
+
 class ScanDiff(BaseModel):
     base_scan_id: str
     against_scan_id: str

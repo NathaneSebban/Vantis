@@ -59,6 +59,33 @@ class ScanRow(Base):
         return [m for m in self.modules.split(",") if m]
 
 
+class ScheduleRow(Base):
+    """A recurring scan configuration. `authorized` records the user's one-time
+    authorization confirmation that covers every future run of this schedule."""
+    __tablename__ = "schedules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    target: Mapped[str] = mapped_column(String(512), nullable=False)
+    scope: Mapped[str] = mapped_column(Text, default="")
+    modules: Mapped[str] = mapped_column(Text, default="")
+    interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=True, index=True)
+    authorized: Mapped[bool] = mapped_column(default=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_scan_id: Mapped[str] = mapped_column(String(36), default="")
+
+    @property
+    def scope_list(self) -> list[str]:
+        return [s for s in self.scope.split(",") if s]
+
+    @property
+    def modules_list(self) -> list[str]:
+        return [m for m in self.modules.split(",") if m]
+
+
 class FindingRow(Base):
     __tablename__ = "findings"
 

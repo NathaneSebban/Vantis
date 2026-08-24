@@ -192,6 +192,48 @@ def test_finding_triage_and_status_filter(client):
     assert client.patch(f"/api/scans/{scan_id}/findings/{fid}", json={"status": "bogus"}).status_code == 422
 
 
+def test_schedule_crud_and_gate(client):
+    # Missing authorization -> 400.
+    bad = client.post("/api/schedules", json={"target": "https://example.com", "interval_minutes": 60,
+                                              "modules": ["web"], "authorized": False})
+    assert bad.status_code == 400
+
+    ok = client.post("/api/schedules", json={"target": "https://example.com", "interval_minutes": 60,
+                                            "modules": ["web"], "authorized": True})
+    assert ok.status_code == 201
+    sid = ok.json()["id"]
+
+    assert any(s["id"] == sid for s in client.get("/api/schedules").json())
+
+    # disable then delete
+    assert client.patch(f"/api/schedules/{sid}", json={"enabled": False}).json()["enabled"] is False
+    assert client.delete(f"/api/schedules/{sid}").json()["action"] == "deleted"
+    assert all(s["id"] != sid for s in client.get("/api/schedules").json())
+
+
+def test_scheduler_tick_launches_due_schedule(client):
+    from api.scheduler import scheduler
+
+    ok = client.post("/api/schedules", json={"target": "https://example.com", "interval_minutes": 60,
+                                            "modules": ["web"], "authorized": True})
+    sid = ok.json()["id"]
+
+    before = len(client.get("/api/scans").json()["items"])
+    started = scheduler.tick()   # schedule is due immediately (next_run_at = now)
+    assert len(started) >= 1
+
+    # A scan was created and (fake) runs to completion.
+    _wait_for_status(client, started[0], {"completed"})
+    after = len(client.get("/api/scans").json()["items"])
+    assert after == before + 1
+
+    # next_run_at advanced into the future.
+    sched = next(s for s in client.get("/api/schedules").json() if s["id"] == sid)
+    assert sched["last_scan_id"] == started[0]
+
+    client.delete(f"/api/schedules/{sid}")
+
+
 def test_scan_diff(client):
     a = _completed_scan(client)
     b = _completed_scan(client)

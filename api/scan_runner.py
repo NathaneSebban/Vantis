@@ -122,6 +122,23 @@ class ScanManager:
         except Exception:  # noqa: BLE001
             pass
 
+    def _maybe_notify(self, db, scan_id: str, target: str) -> None:
+        """Best-effort completion webhook. Never raises into the scan flow."""
+        try:
+            from sqlalchemy import func, select
+
+            from api.notifier import notify_scan_complete
+
+            rows = db.execute(
+                select(FindingRow.severity, func.count())
+                .where(FindingRow.scan_id == scan_id)
+                .group_by(FindingRow.severity)
+            ).all()
+            counts = {sev: n for sev, n in rows}
+            notify_scan_complete(target, scan_id, counts)
+        except Exception as e:  # noqa: BLE001
+            print(f"[!] notify error: {e}")
+
     # -- the job body -------------------------------------------------
 
     def _run_job(
@@ -202,6 +219,11 @@ class ScanManager:
                 max_workers=settings.scan_workers,
             )
             engine.run(progress_callback=progress)
+
+            # Fire the completion webhook BEFORE flipping to COMPLETED, so a
+            # watcher that reacts to "completed" can rely on the notification
+            # already being on its way. Best-effort; never blocks completion.
+            self._maybe_notify(db, scan_id, target)
 
             scan = db.get(ScanRow, scan_id)
             if scan:
