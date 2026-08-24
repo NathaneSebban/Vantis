@@ -26,7 +26,8 @@ class FakeEngine:
     """Stand-in for vantis.core.engine.Engine that emits scripted events."""
 
     def __init__(self, target, categories=None, http_timeout=10.0, rate_limit_delay=0.3,
-                 verbose=False, auth_headers=None, auth_cookies=None, max_workers=1):
+                 verbose=False, auth_headers=None, auth_cookies=None, max_workers=1,
+                 enabled_modules=None):
         self.target = target
         self.categories = categories or []
 
@@ -156,6 +157,15 @@ def test_delete_completed_scan_removes_history(client):
 
 def test_get_missing_scan_is_404(client):
     assert client.get("/api/scans/does-not-exist").status_code == 404
+
+
+def test_list_modules(client):
+    mods = client.get("/api/modules").json()
+    names = {m["name"] for m in mods}
+    # New modules must be advertised, grouped by category.
+    assert {"tls-audit", "cors-misconfig", "ssti-detect", "js-secrets", "version-cve"} <= names
+    assert all(m["category"] in {"recon", "web", "cve"} for m in mods)
+    assert len(mods) >= 15
 
 
 def _completed_scan(client) -> str:

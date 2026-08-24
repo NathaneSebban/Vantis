@@ -40,6 +40,9 @@ class ScanCreate(BaseModel):
     target: str = Field(..., description="Target URL, domain or IP, e.g. https://example.com")
     scope: list[str] = Field(default_factory=list, description="Additional in-scope hosts/domains/CIDRs")
     modules: list[str] = Field(default_factory=lambda: ["recon", "web", "cve"])
+    # Optional: specific module names to run (e.g. ["tls-audit", "cors-misconfig"]).
+    # When provided, overrides the category selection with an exact module set.
+    module_names: list[str] = Field(default_factory=list)
     # Authenticated scanning. These are used in-memory for the run only and are
     # NEVER written to the database (they are credentials).
     headers: dict[str, str] = Field(default_factory=dict, description="Extra request headers (e.g. Authorization)")

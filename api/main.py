@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from api.config import get_settings
 from api.database import Base, engine
 from api.rate_limit import limiter
-from api.routers import scans, schedules
+from api.routers import modules, scans, schedules
 from api.scan_runner import scan_manager
 from api.scheduler import scheduler
 
@@ -68,6 +68,7 @@ app.add_middleware(
 
 app.include_router(scans.router)
 app.include_router(schedules.router)
+app.include_router(modules.router)
 
 
 @app.get("/api/health", tags=["meta"])

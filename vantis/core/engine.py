@@ -36,6 +36,29 @@ class ScanControlSignal(Exception):
 ProgressCallback = Callable[[str, dict[str, Any]], None]
 
 
+def discover_all_modules() -> list[type["ScanModule"]]:
+    """Return every ScanModule subclass under vantis.modules.* — used to list
+    the scanner's capabilities (e.g. the API's /api/modules) without running
+    anything or needing a target."""
+    import vantis.modules as modules_pkg
+
+    found: list[type[ScanModule]] = []
+    for _, name, _ in pkgutil.walk_packages(modules_pkg.__path__, prefix="vantis.modules."):
+        try:
+            mod = importlib.import_module(name)
+        except Exception:  # noqa: BLE001 - a broken plugin shouldn't break listing
+            continue
+        for attr in vars(mod).values():
+            if (
+                isinstance(attr, type)
+                and issubclass(attr, ScanModule)
+                and attr is not ScanModule
+                and attr not in found
+            ):
+                found.append(attr)
+    return found
+
+
 class Engine:
     def __init__(
         self,
@@ -47,9 +70,13 @@ class Engine:
         auth_headers: dict | None = None,
         auth_cookies: dict | None = None,
         max_workers: int = 1,
+        enabled_modules: list[str] | None = None,
     ):
         self.target = target
-        self.categories = categories or ["recon", "web", "cve"]
+        # When specific module names are requested, discover across all
+        # categories and filter down to those names; otherwise run by category.
+        self.enabled_modules = set(enabled_modules) if enabled_modules else None
+        self.categories = ["recon", "web", "cve"] if self.enabled_modules else (categories or ["recon", "web", "cve"])
         self.verbose = verbose
         self.max_workers = max_workers
         self.ctx = ModuleContext(
@@ -85,6 +112,7 @@ class Engine:
                     and attr is not ScanModule
                     and attr.category in self.categories
                     and attr not in self._modules
+                    and (self.enabled_modules is None or attr.name in self.enabled_modules)
                 ):
                     self._modules.append(attr)
 
