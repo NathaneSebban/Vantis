@@ -11,7 +11,7 @@ No code is executed beyond the arithmetic probe.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 
 DEFAULT_PARAMS = ["q", "search", "name", "id", "page", "query", "message", "template", "input"]
@@ -60,7 +60,7 @@ class SstiCheckModule(ScanModule):
                 if PRODUCT in resp.text:
                     seen.add(point.param)
                     findings.append(Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.HIGH, owasp="A03:2021", cwe="CWE-1336",
                         title=f"Server-side template injection in parameter '{point.param}'",
                         severity=Severity.HIGH, target=str(target),
                         matched_at=set_param(point.url, point.param, payload),

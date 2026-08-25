@@ -35,7 +35,7 @@ from pathlib import Path
 
 import yaml
 
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 

@@ -11,7 +11,7 @@ who finds it) and its endpoint count is useful recon context.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.openapi_crawler import discover_openapi
 
 
@@ -34,7 +34,7 @@ class OpenApiDiscoveryModule(ScanModule):
         title_field = spec.get("info", {}).get("title") if isinstance(spec.get("info"), dict) else None
 
         return [Finding(
-            module=self.name,
+            module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-200",
             title="OpenAPI/Swagger specification exposed",
             severity=Severity.INFO,
             target=str(self.ctx.target),

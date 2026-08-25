@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 from vantis.utils.http_client import HttpClient
 
@@ -83,7 +83,7 @@ class SqliCheckModule(ScanModule):
                     if regex.search(resp.text) and not regex.search(base1_text):
                         findings.append(
                             Finding(
-                                module=self.name,
+                                module=self.name, confidence=Confidence.HIGH, owasp="A03:2021", cwe="CWE-89",
                                 title=f"Possible SQL injection in parameter '{param}' ({dbms} error)",
                                 severity=Severity.HIGH,
                                 target=base_url,
@@ -118,7 +118,7 @@ class SqliCheckModule(ScanModule):
                 if len_true and len_false and diff > threshold:
                     findings.append(
                         Finding(
-                            module=self.name,
+                            module=self.name, confidence=Confidence.MEDIUM, owasp="A03:2021", cwe="CWE-89",
                             title=f"Possible boolean-based blind SQLi in parameter '{param}'",
                             severity=Severity.MEDIUM,
                             target=base_url,

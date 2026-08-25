@@ -33,7 +33,7 @@ import uuid
 from urllib.parse import parse_qs, urlparse
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.crawler import discover_injection_points, set_param
 
 # Parameter names that plausibly reference a specific owned resource.
@@ -118,7 +118,7 @@ class IdorCheckModule(ScanModule):
 
             if b_real.status_code == 200 and not looks_denied:
                 findings.append(Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.MEDIUM, owasp="A01:2021", cwe="CWE-639",
                     title=f"Possible IDOR via parameter '{point.param}'",
                     severity=Severity.HIGH,
                     target=str(target),

@@ -23,6 +23,14 @@ class Severity(str, Enum):
         return {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}[self.value]
 
 
+class Confidence(str, Enum):
+    """How sure the module is that this is a genuine issue, not a heuristic
+    guess. Distinct from severity (how bad it would be if true)."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 @dataclass
 class Finding:
     module: str
@@ -37,10 +45,17 @@ class Finding:
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    # How certain the detection is (pattern match vs statistical heuristic).
+    confidence: Confidence = Confidence.MEDIUM
+    # Standard classification references, e.g. "A03:2021" and "CWE-89" — blank
+    # when a finding doesn't map cleanly onto one (e.g. plain recon info).
+    owasp: str = ""
+    cwe: str = ""
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d["severity"] = self.severity.value
+        d["confidence"] = self.confidence.value
         return d
 
 
@@ -87,6 +102,9 @@ class Report:
             for f in group:
                 lines.append(f"### {f.title}")
                 lines.append(f"- **Module:** {f.module}")
+                lines.append(f"- **Confidence:** {f.confidence.value}")
+                if f.owasp or f.cwe:
+                    lines.append(f"- **Classification:** {', '.join(x for x in (f.owasp, f.cwe) if x)}")
                 lines.append(f"- **Location:** {f.matched_at or f.target}")
                 if f.description:
                     lines.append(f"- **Description:** {f.description}")
@@ -119,6 +137,8 @@ class Report:
               <td>{html.escape(f.module)}</td>
               <td>{html.escape(f.matched_at or f.target)}</td>
               <td>{html.escape(f.description)}</td>
+              <td>{html.escape(f.confidence.value)}</td>
+              <td>{html.escape(', '.join(x for x in (f.owasp, f.cwe) if x))}</td>
             </tr>""")
         escaped_target = html.escape(self.target)
         html_doc = f"""<!DOCTYPE html>
@@ -136,7 +156,7 @@ class Report:
   <h1>Vantis Report: {escaped_target}</h1>
   <div class="meta">Generated {datetime.now(timezone.utc).isoformat()} · {len(self.findings)} findings</div>
   <table>
-    <tr><th>Severity</th><th>Title</th><th>Module</th><th>Location</th><th>Description</th></tr>
+    <tr><th>Severity</th><th>Title</th><th>Module</th><th>Location</th><th>Description</th><th>Confidence</th><th>Classification</th></tr>
     {''.join(rows)}
   </table>
 </body></html>"""
@@ -261,6 +281,9 @@ class Report:
             pdf.ln(1)
 
             field("Module", f.module)
+            field("Confidence", f.confidence.value)
+            if f.owasp or f.cwe:
+                field("Classification", ", ".join(x for x in (f.owasp, f.cwe) if x))
             field("Location", f.matched_at or f.target)
             field("Description", f.description)
             field("Evidence", f.evidence)
@@ -308,8 +331,14 @@ class Report:
                 "properties": {
                     "severity": f.severity.value,
                     "security-severity": sec_severity.get(f.severity.value, "1.0"),
+                    "confidence": f.confidence.value,
                     "evidence": f.evidence,
                     "remediation": f.remediation,
+                    "tags": [t for t in (
+                        "security",
+                        f"external/cwe/{f.cwe.lower().replace(' ', '')}" if f.cwe else None,
+                        f"owasp/{f.owasp}" if f.owasp else None,
+                    ) if t],
                 },
             })
 

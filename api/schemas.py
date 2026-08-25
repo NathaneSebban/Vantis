@@ -162,6 +162,9 @@ class FindingOut(BaseModel):
     matched_at: str = ""
     timestamp: str = ""
     status: str = "open"
+    confidence: str = "medium"
+    owasp: str = ""
+    cwe: str = ""
 
 
 class FindingStatusUpdate(BaseModel):

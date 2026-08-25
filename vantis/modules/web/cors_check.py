@@ -11,7 +11,7 @@ and checking whether it is echoed. Detection only: no data is read.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 PROBE_ORIGIN = "https://vantis-cors-probe.example"
@@ -36,7 +36,7 @@ class CorsCheckModule(ScanModule):
 
         if (reflected or allows_null) and acac:
             return Finding(
-                module=self.name,
+                module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-942",
                 title="CORS: arbitrary origin reflected with credentials",
                 severity=Severity.HIGH, target=str(self.ctx.target), matched_at=url,
                 evidence=f"Sent Origin: {origin} -> ACAO: {acao}, ACAC: true",
@@ -48,7 +48,7 @@ class CorsCheckModule(ScanModule):
             )
         if reflected or allows_null:
             return Finding(
-                module=self.name,
+                module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-942",
                 title="CORS: arbitrary origin reflected",
                 severity=Severity.MEDIUM, target=str(self.ctx.target), matched_at=url,
                 evidence=f"Sent Origin: {origin} -> ACAO: {acao}",

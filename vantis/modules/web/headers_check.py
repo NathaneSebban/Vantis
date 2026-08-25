@@ -6,7 +6,7 @@ Zero risk of side effects: this is a single GET request.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 REQUIRED_HEADERS = {
@@ -59,7 +59,7 @@ class HeadersCheckModule(ScanModule):
             if header not in resp.headers:
                 findings.append(
                     Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-693",
                         title=f"Missing security header: {header}",
                         severity=severity,
                         target=str(self.ctx.target),
@@ -74,7 +74,7 @@ class HeadersCheckModule(ScanModule):
             if value and is_risky(value):
                 findings.append(
                     Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-693",
                         title=f"Risky value for {header}",
                         severity=Severity.MEDIUM,
                         target=str(self.ctx.target),
@@ -98,7 +98,7 @@ class HeadersCheckModule(ScanModule):
             if flags_missing:
                 findings.append(
                     Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-693",
                         title=f"Cookie '{name}' missing flag(s): {', '.join(flags_missing)}",
                         severity=Severity.LOW if "HttpOnly" not in flags_missing else Severity.MEDIUM,
                         target=str(self.ctx.target),

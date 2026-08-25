@@ -14,7 +14,7 @@ import re
 import uuid
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 from vantis.utils.http_client import HttpClient
 
@@ -62,7 +62,7 @@ class XssCheckModule(ScanModule):
             if unescaped_pattern.search(resp.text) and served_as_html:
                 findings.append(
                     Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.HIGH, owasp="A03:2021", cwe="CWE-79",
                         title=f"Reflected XSS in parameter '{param}'",
                         severity=Severity.HIGH,
                         target=str(self.ctx.target),
@@ -83,7 +83,7 @@ class XssCheckModule(ScanModule):
                 # content type ever changes, or for content sniffing).
                 findings.append(
                     Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.LOW,
                         title=f"Parameter '{param}' reflected unescaped in non-HTML response",
                         severity=Severity.INFO,
                         target=str(self.ctx.target),
@@ -96,7 +96,7 @@ class XssCheckModule(ScanModule):
                 # Reflected but escaped — worth a low-severity note, not a real finding
                 findings.append(
                     Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.LOW,
                         title=f"Parameter '{param}' reflected but appears encoded",
                         severity=Severity.INFO,
                         target=str(self.ctx.target),

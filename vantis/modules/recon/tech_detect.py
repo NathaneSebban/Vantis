@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 HEADER_SIGNATURES = {
@@ -81,7 +81,7 @@ class TechDetectModule(ScanModule):
         if detected:
             findings.append(
                 Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH,
                     title="Technology stack fingerprinted",
                     severity=Severity.INFO,
                     target=str(self.ctx.target),
@@ -91,7 +91,7 @@ class TechDetectModule(ScanModule):
         if versioned:
             findings.append(
                 Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH,
                     title="Software version(s) disclosed in headers",
                     severity=Severity.LOW,
                     target=str(self.ctx.target),

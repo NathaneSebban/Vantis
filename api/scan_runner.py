@@ -48,6 +48,9 @@ def _finding_to_row(scan_id: str, f: Finding) -> FindingRow:
         refs="\n".join(d.get("references") or []),
         matched_at=d["matched_at"],
         timestamp=d["timestamp"],
+        confidence=d.get("confidence", "medium"),
+        owasp=d.get("owasp", ""),
+        cwe=d.get("cwe", ""),
     )
 
 

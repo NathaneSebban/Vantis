@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 
 # product key -> list of {constraint, cve, severity, name}
 # constraints: any of ge/gt/le/lt as dotted-version strings (AND-combined).
@@ -107,7 +107,7 @@ class VersionCveModule(ScanModule):
                     continue
                 seen.add(c["cve"])
                 findings.append(Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH,
                     title=c["name"],
                     severity=Severity(c["severity"]),
                     target=str(self.ctx.target),

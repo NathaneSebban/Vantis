@@ -24,10 +24,20 @@ export function FindingCard({ finding, onClick, compact }: Props) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <SeverityBadge severity={finding.severity} />
+          {finding.confidence !== "high" && (
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#9691ac] ring-1 ring-[#e6e1f5]"
+              title="Detection confidence"
+            >
+              {finding.confidence} confidence
+            </span>
+          )}
           <span className="truncate font-semibold text-[#1c1940] group-hover:text-violetx-ink">{finding.title}</span>
         </div>
         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[#8b84a3]">
           <span className="rounded bg-violetx-soft px-1.5 py-0.5 font-mono text-violetx-deep">{finding.module}</span>
+          {finding.owasp && <span className="pt-0.5">{finding.owasp}</span>}
+          {finding.cwe && <span className="pt-0.5">{finding.cwe}</span>}
           <span className="truncate pt-0.5">{finding.matched_at || finding.target}</span>
         </div>
         {!compact && finding.description && (

@@ -13,7 +13,7 @@ import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 
 COMMON_PORTS = {
     21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS",
@@ -65,7 +65,7 @@ class PortScanModule(ScanModule):
             service_list = ", ".join(f"{p}/{COMMON_PORTS[p]}" for p in sorted(open_ports))
             findings.append(
                 Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH,
                     title=f"{len(open_ports)} open port(s) on {host}",
                     severity=Severity.INFO,
                     target=host,
@@ -77,7 +77,7 @@ class PortScanModule(ScanModule):
                 if port in SENSITIVE_PORTS:
                     findings.append(
                         Finding(
-                            module=self.name,
+                            module=self.name, confidence=Confidence.HIGH,
                             title=f"Sensitive service exposed: {COMMON_PORTS[port]} on port {port}",
                             severity=Severity.MEDIUM,
                             target=host,

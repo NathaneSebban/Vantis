@@ -18,7 +18,7 @@ from __future__ import annotations
 import secrets
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 
 # Common directories/endpoints. Kept deliberately focused (fast + polite);
 # the sensitive-file set lives in the exposed-paths module.
@@ -73,7 +73,7 @@ class ContentDiscoveryModule(ScanModule):
             code = resp.status_code
             if code in (401, 403):
                 findings.append(Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-200",
                     title=f"Access-restricted path exists: /{path}",
                     severity=Severity.INFO, target=base, matched_at=url,
                     evidence=f"HTTP {code}",
@@ -90,7 +90,7 @@ class ContentDiscoveryModule(ScanModule):
             sensitive = path.split("/")[0] in SENSITIVE or path in SENSITIVE
             ctype = resp.headers.get("Content-Type", "?").split(";")[0].strip()
             findings.append(Finding(
-                module=self.name,
+                module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-200",
                 title=f"Discovered path: /{path}",
                 severity=Severity.LOW if sensitive else Severity.INFO,
                 target=base, matched_at=url,

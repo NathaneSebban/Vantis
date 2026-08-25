@@ -11,7 +11,12 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <SeverityBadge severity={finding.severity} />
+            <div className="flex items-center gap-2">
+              <SeverityBadge severity={finding.severity} />
+              <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#9691ac] ring-1 ring-[#e6e1f5]">
+                {finding.confidence} confidence
+              </span>
+            </div>
             <h2 className="mt-2 text-lg font-bold text-violetx-ink">{finding.title}</h2>
           </div>
           <button
@@ -25,6 +30,9 @@ export function FindingDetail({ finding, onClose }: { finding: Finding; onClose:
 
         <dl className="mt-6 space-y-4 text-sm">
           <Field label="Module" value={finding.module} mono />
+          {(finding.owasp || finding.cwe) && (
+            <Field label="Classification" value={[finding.owasp, finding.cwe].filter(Boolean).join(" · ")} mono />
+          )}
           <Field label="Location" value={finding.matched_at || finding.target} mono />
           {finding.description && <Field label="Description" value={finding.description} />}
           {finding.evidence && <Field label="Evidence" value={finding.evidence} mono block />}

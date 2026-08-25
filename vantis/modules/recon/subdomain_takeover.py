@@ -13,7 +13,7 @@ claims anything; it just reports hosts that look takeover-able.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 
 # service -> signature strings that indicate an unclaimed / dangling target.
 FINGERPRINTS: dict[str, list[str]] = {
@@ -59,7 +59,7 @@ class SubdomainTakeoverModule(ScanModule):
                 if hit:
                     service, signature = hit
                     findings.append(Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.MEDIUM, owasp="A05:2021", cwe="CWE-350",
                         title=f"Possible subdomain takeover: {host} ({service})",
                         severity=Severity.HIGH,
                         target=str(self.ctx.target),

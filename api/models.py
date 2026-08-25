@@ -107,6 +107,11 @@ class FindingRow(Base):
     timestamp: Mapped[str] = mapped_column(String(40), default="")
     # Triage state: open | false_positive | confirmed. Lets users suppress noise.
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    # How certain the detection is (pattern match vs statistical heuristic).
+    confidence: Mapped[str] = mapped_column(String(20), default="medium")
+    # Standard classification references, e.g. "A03:2021" / "CWE-89".
+    owasp: Mapped[str] = mapped_column(String(20), default="")
+    cwe: Mapped[str] = mapped_column(String(20), default="")
 
     scan: Mapped[ScanRow] = relationship(back_populates="findings")
 
@@ -131,6 +136,9 @@ class FindingRow(Base):
             "matched_at": self.matched_at,
             "timestamp": self.timestamp,
             "status": self.status,
+            "confidence": self.confidence,
+            "owasp": self.owasp,
+            "cwe": self.cwe,
         }
 
 

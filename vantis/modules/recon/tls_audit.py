@@ -20,7 +20,7 @@ import ssl
 from datetime import datetime, timezone
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 
 # certificate timestamps look like: 'Jun  1 12:00:00 2025 GMT'
 _CERT_TIME_FMT = "%b %d %H:%M:%S %Y %Z"
@@ -160,13 +160,14 @@ class TlsAuditModule(ScanModule):
         for severity, title, evidence in analyze_certificate(cert, host):
             findings.append(Finding(
                 module=self.name, title=title, severity=severity, target=base,
+                confidence=Confidence.HIGH, owasp="A02:2021", cwe="CWE-295",
                 evidence=evidence, matched_at=base,
                 remediation="Renew/replace the certificate and ensure the hostname and chain are correct.",
             ))
 
         for proto in self._probe_deprecated(host, port):
             findings.append(Finding(
-                module=self.name,
+                module=self.name, confidence=Confidence.HIGH, owasp="A02:2021", cwe="CWE-327",
                 title=f"Deprecated TLS protocol accepted: {proto}",
                 severity=Severity.MEDIUM, target=base, matched_at=base,
                 evidence=f"Server completed a {proto} handshake",
@@ -178,6 +179,7 @@ class TlsAuditModule(ScanModule):
         if negotiated:
             findings.append(Finding(
                 module=self.name, title="TLS endpoint fingerprinted", severity=Severity.INFO,
+                confidence=Confidence.HIGH,
                 target=base, evidence=f"Negotiated {negotiated}", matched_at=base,
             ))
         return findings

@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 
 DEFAULT_PARAMS = ["file", "page", "path", "template", "doc", "document", "folder",
@@ -63,7 +63,7 @@ class PathTraversalModule(ScanModule):
                     seen.add(point.param)
                     marker = "/etc/passwd" if _PASSWD_RE.search(resp.text) else "windows/win.ini"
                     findings.append(Finding(
-                        module=self.name,
+                        module=self.name, confidence=Confidence.HIGH, owasp="A01:2021", cwe="CWE-22",
                         title=f"Path traversal / LFI in parameter '{point.param}'",
                         severity=Severity.HIGH, target=str(target),
                         matched_at=set_param(point.url, point.param, payload),

@@ -14,7 +14,7 @@ else. Never issues a mutation or any query beyond introspection.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 
 COMMON_PATHS = ["graphql", "api/graphql", "graphql/console", "v1/graphql", "query"]
 
@@ -73,7 +73,7 @@ class GraphQlCheckModule(ScanModule):
                 continue
 
             findings.append(Finding(
-                module=self.name,
+                module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-200",
                 title="GraphQL introspection is enabled",
                 severity=Severity.MEDIUM,
                 target=str(self.ctx.target),

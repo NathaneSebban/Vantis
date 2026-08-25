@@ -9,7 +9,7 @@ from __future__ import annotations
 import secrets
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 # path -> (severity, description, content-check substring or None)
@@ -81,7 +81,7 @@ class ExposedPathsModule(ScanModule):
             content_type = resp.headers.get("Content-Type", "?").split(";")[0].strip()
             findings.append(
                 Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-538",
                     title=f"Exposed sensitive path: /{path}",
                     severity=severity,
                     target=base,

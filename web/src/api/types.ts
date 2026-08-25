@@ -13,6 +13,8 @@ export type ScanStatus =
 export const MODULE_CATEGORIES = ["recon", "web", "cve"] as const;
 export type ModuleCategory = (typeof MODULE_CATEGORIES)[number];
 
+export type Confidence = "low" | "medium" | "high";
+
 export interface Finding {
   module: string;
   title: string;
@@ -24,6 +26,9 @@ export interface Finding {
   references: string[];
   matched_at: string;
   timestamp: string;
+  confidence: Confidence;
+  owasp: string;
+  cwe: string;
 }
 
 export interface SeverityCounts {

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 
@@ -57,7 +57,7 @@ class SubdomainEnumModule(ScanModule):
         if in_scope:
             findings.append(
                 Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH,
                     title=f"{len(in_scope)} subdomain(s) discovered via certificate transparency",
                     severity=Severity.INFO,
                     target=str(self.ctx.target),

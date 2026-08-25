@@ -9,7 +9,7 @@ reporting that PUT is *allowed* never means we tried to PUT anything.
 from __future__ import annotations
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.http_client import HttpClient
 
 DANGEROUS = {"PUT", "DELETE", "PATCH", "CONNECT"}
@@ -32,7 +32,7 @@ class HttpMethodsModule(ScanModule):
             risky = sorted(methods & DANGEROUS)
             if risky:
                 findings.append(Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.MEDIUM, owasp="A05:2021", cwe="CWE-650",
                     title=f"Dangerous HTTP method(s) advertised: {', '.join(risky)}",
                     severity=Severity.LOW, target=url, matched_at=url,
                     evidence=f"Allow: {allow}",
@@ -45,7 +45,7 @@ class HttpMethodsModule(ScanModule):
         trace = client.request("TRACE", url)
         if trace is not None and trace.status_code == 200 and "TRACE" in (trace.text or "").upper()[:200]:
             findings.append(Finding(
-                module=self.name,
+                module=self.name, confidence=Confidence.HIGH, owasp="A05:2021", cwe="CWE-693",
                 title="HTTP TRACE enabled (Cross-Site Tracing)",
                 severity=Severity.LOW, target=url, matched_at=url,
                 evidence=f"TRACE -> HTTP {trace.status_code}, request echoed",

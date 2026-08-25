@@ -60,3 +60,53 @@ def test_js_secrets_module_reads_linked_scripts():
     assert any("AWS access key id" in f.title for f in findings)
     # Never leak the full secret in the finding.
     assert all("AKIAIOSFODNN7EXAMPLE" not in f.evidence for f in findings)
+
+
+# -- entropy-based secret detection ------------------------------------
+
+from vantis.modules.web.js_secrets import scan_text_for_entropy_secrets, shannon_entropy
+
+
+def test_shannon_entropy_random_string_scores_high():
+    assert shannon_entropy("aB3xQ9zK7mP2vN8rL4wT6yU1") > 3.5
+
+
+def test_shannon_entropy_repeated_chars_scores_low():
+    assert shannon_entropy("aaaaaaaaaaaaaaaaaaaa") < 1.0
+
+
+def test_shannon_entropy_empty_is_zero():
+    assert shannon_entropy("") == 0.0
+
+
+def test_entropy_scan_finds_credential_named_high_entropy_value():
+    text = 'const cfg = {internalApiKey: "qX7mZ9pL2vR8kW4jT6yB1nH3fD5sC0aE"};'
+    hits = scan_text_for_entropy_secrets(text)
+    assert len(hits) == 1
+    assert "internalApiKey" in hits[0][0]
+
+
+def test_entropy_scan_skips_placeholders_and_low_entropy():
+    text = 'const a = {apiKey: "YOUR_API_KEY_HERE_1234567890"};'
+    assert scan_text_for_entropy_secrets(text) == []
+    text2 = 'const b = {authToken: "aaaaaaaaaaaaaaaaaaaaaaaaaaaa"};'
+    assert scan_text_for_entropy_secrets(text2) == []
+
+
+def test_entropy_scan_skips_values_already_known():
+    value = "qX7mZ9pL2vR8kW4jT6yB1nH3fD5sC0aE"
+    text = f'const cfg = {{secretToken: "{value}"}};'
+    assert scan_text_for_entropy_secrets(text, known_values={value}) == []
+
+
+@responses.activate
+def test_js_secrets_module_reports_entropy_finding_at_low_confidence():
+    responses.add(responses.GET, "http://example.com",
+                  body='<html><script src="/app.js"></script></html>', status=200,
+                  content_type="text/html")
+    responses.add(responses.GET, "http://example.com/app.js",
+                  body='var internalToken = "qX7mZ9pL2vR8kW4jT6yB1nH3fD5sC0aE";',
+                  status=200, content_type="application/javascript")
+    ctx = ModuleContext(target=Target("http://example.com"), rate_limit_delay=0)
+    findings = JsSecretsModule(ctx).run()
+    assert any(f.confidence.value == "low" and "entropy" in f.title.lower() for f in findings)

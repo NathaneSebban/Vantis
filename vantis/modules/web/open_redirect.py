@@ -11,7 +11,7 @@ from __future__ import annotations
 from urllib.parse import urlparse
 
 from vantis.core.plugin_base import ScanModule
-from vantis.core.report import Finding, Severity
+from vantis.core.report import Confidence, Finding, Severity
 from vantis.utils.crawler import InjectionPoint, discover_injection_points, set_param
 from vantis.utils.http_client import HttpClient
 
@@ -54,7 +54,7 @@ class OpenRedirectModule(ScanModule):
             if urlparse(location).hostname == CANARY_HOST:
                 seen.add(key)
                 findings.append(Finding(
-                    module=self.name,
+                    module=self.name, confidence=Confidence.HIGH, owasp="A01:2021", cwe="CWE-601",
                     title=f"Open redirect via parameter '{point.param}'",
                     severity=Severity.MEDIUM, target=str(target), matched_at=test_url,
                     evidence=f"HTTP {resp.status_code} -> Location: {location}",
