@@ -90,10 +90,16 @@ class Engine:
         # supplied, submit the target's own login form up front and use the
         # resulting session cookies as this scan's authentication, in
         # addition to (never overwriting) any explicitly-provided
-        # auth_headers/auth_cookies. The outcome (success/failure + reason)
-        # is recorded here and surfaced as a Finding at the start of run(),
-        # so it's visible in the live feed and the final report — not just
-        # in a server log the operator would otherwise never see.
+        # auth_headers/auth_cookies. Two-stage cascade: try the fast,
+        # dependency-free HTML parser first (covers server-rendered login
+        # pages); only if THAT finds no form, fall back to driving a real
+        # headless browser (covers SPA login forms that only exist in the
+        # DOM after client-side JS renders them). Most sites resolve in the
+        # fast stage; only SPAs pay the much heavier browser cost. The
+        # outcome (success/failure + reason + which method worked) is
+        # recorded here and surfaced as a Finding at the start of run(), so
+        # it's visible in the live feed and the final report — not just in a
+        # server log the operator would otherwise never see.
         self._login_result: dict | None = None
         if login_url and login_username and login_password:
             from vantis.utils.auth_login import perform_login
@@ -108,11 +114,21 @@ class Engine:
                     print(f"[login] {m}")
 
             cookies = perform_login(login_client, login_url, login_username, login_password, log=_login_log)
+            method = "html-form"
+
+            if not cookies:
+                from vantis.utils.browser_crawler import browser_login
+
+                cookies = browser_login(login_url, login_username, login_password, log=_login_log)
+                if cookies:
+                    method = "headless-browser"
+
             self._login_result = {
                 "success": bool(cookies),
                 "cookie_count": len(cookies) if cookies else 0,
                 "reason": login_messages[-1] if login_messages else "",
                 "login_url": login_url,
+                "method": method if cookies else None,
             }
             if cookies:
                 auth_cookies = {**cookies, **(auth_cookies or {})}
@@ -262,13 +278,15 @@ class Engine:
         if self._login_result is not None:
             lr = self._login_result
             if lr["success"]:
+                method_note = ("via its rendered HTML form" if lr["method"] == "html-form"
+                                else "via a headless browser, after its login form only appeared post-render (SPA)")
                 login_finding = Finding(
                     module="auth-login", confidence=Confidence.HIGH,
                     title="Automated login succeeded",
                     severity=Severity.INFO,
                     target=str(self.target),
                     matched_at=lr["login_url"],
-                    description=f"Vantis logged in via {lr['login_url']} and obtained "
+                    description=f"Vantis logged in {method_note} at {lr['login_url']} and obtained "
                                 f"{lr['cookie_count']} session cookie(s); every module below ran authenticated.",
                 )
             else:
@@ -278,11 +296,13 @@ class Engine:
                     severity=Severity.LOW,
                     target=str(self.target),
                     matched_at=lr["login_url"],
-                    description=f"Vantis could not log in via {lr['login_url']}"
+                    description=f"Vantis could not log in via {lr['login_url']} (tried both the HTML form "
+                                f"parser and a headless browser)"
                                 + (f": {lr['reason']}." if lr["reason"] else "."),
-                    remediation="Double-check the login URL and credentials, and confirm the page has a "
-                                "standard HTML <form> with a password field (JS-driven login flows aren't "
-                                "detected). Modules below ran UNAUTHENTICATED.",
+                    remediation="Double-check the login URL and credentials. If the form needs a CAPTCHA, "
+                                "2FA, or a non-standard submission flow, log in manually and pass the "
+                                "resulting session via --cookie/secondary_cookies instead. "
+                                "Modules below ran UNAUTHENTICATED.",
                 )
             self.report.add(login_finding)
             self._emit(progress_callback, "finding", {"module": login_finding.module, "finding": login_finding})

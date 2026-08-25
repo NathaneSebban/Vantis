@@ -131,3 +131,94 @@ def browser_crawl(target, timeout_ms: int = 15000, max_points: int = 40) -> list
         _extract_points_from_url(req.url, "browser-xhr", target, seen, points)
 
     return points[:max_points]
+
+
+_USERNAME_HINTS = ("user", "email", "login", "identifiant", "account")
+
+
+def browser_login(login_url: str, username: str, password: str,
+                   timeout_ms: int = 15000, log=None) -> dict[str, str] | None:
+    """Log in via a real headless browser instead of parsing raw HTML.
+
+    Fallback for JS-rendered (SPA) login forms: `auth_login.perform_login()`
+    only sees the HTML the server sends, which for a React/Vue/Angular app is
+    typically an empty `<div id="root">` — the real `<form>` only exists in
+    the DOM after client-side JS renders it. This waits for that render, then
+    interacts with the page like a real user: fill the password field (and
+    whichever field looks like the username), submit, and read back the
+    resulting cookies.
+
+    Returns None on any failure (Playwright unavailable, no password field
+    found even after rendering, submission didn't yield a new/changed
+    cookie) — never raises, matching every other best-effort helper here."""
+    log = log or (lambda _m: None)
+    if not browser_crawl_available():
+        log("headless browser unavailable (install: pip install vantis[browser] && playwright install chromium)")
+        return None
+
+    from playwright.sync_api import sync_playwright
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+            try:
+                context = browser.new_context(ignore_https_errors=True)
+                page = context.new_page()
+                page.goto(login_url, timeout=timeout_ms, wait_until="domcontentloaded")
+
+                before = {c["name"]: c["value"] for c in context.cookies()}
+
+                # Wait for the password field to actually appear in the DOM —
+                # SPA login forms are often rendered after an async fetch of
+                # their own (lazy-loaded route, auth-config check, etc.), so
+                # "the page loaded" isn't the same as "the form exists yet".
+                try:
+                    password_field = page.wait_for_selector(
+                        'input[type="password"]', timeout=timeout_ms, state="visible"
+                    )
+                except Exception:
+                    password_field = None
+                if password_field is None:
+                    log(f"no rendered login form found at {login_url} (checked after JS render)")
+                    return None
+
+                username_field = page.query_selector('input[type="email"]')
+                if username_field is None:
+                    for hint in _USERNAME_HINTS:
+                        username_field = page.query_selector(
+                            f'input[name*="{hint}" i], input[id*="{hint}" i]'
+                        )
+                        if username_field is not None:
+                            break
+                if username_field is None:
+                    # Fall back to the first text-ish input on the page.
+                    username_field = page.query_selector('input[type="text"], input:not([type])')
+                if username_field is None:
+                    log(f"rendered login form has a password field but no identifiable username field")
+                    return None
+
+                username_field.fill(username)
+                password_field.fill(password)
+
+                submit = page.query_selector('button[type="submit"], input[type="submit"]')
+                if submit is not None:
+                    submit.click()
+                else:
+                    password_field.press("Enter")
+
+                page.wait_for_load_state("networkidle", timeout=timeout_ms)
+
+                after = {c["name"]: c["value"] for c in context.cookies()}
+                changed = {k: v for k, v in after.items() if before.get(k) != v}
+                if not changed:
+                    log("login submitted via headless browser but no session cookie changed — "
+                        "credentials may be wrong")
+                    return None
+
+                log(f"headless-browser login succeeded, {len(changed)} cookie(s) obtained")
+                return changed
+            finally:
+                browser.close()
+    except Exception as e:  # noqa: BLE001 - best-effort; never break a scan over this
+        log(f"headless-browser login failed: {e}")
+        return None

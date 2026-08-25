@@ -1,11 +1,24 @@
 """Engine surfaces the automated-login outcome as a Finding, visible in the
 live feed and every report export — not just a server-side log line."""
+import pytest
 import responses
 
 from vantis.core.engine import Engine
 from vantis.core.plugin_base import ScanModule
 from vantis.core.report import Finding, Severity
 from vantis.core.target import Target
+
+
+@pytest.fixture(autouse=True)
+def _no_browser_login_fallback(monkeypatch):
+    """These tests exercise the HTML-form login path specifically. Without
+    this, a failed HTML login would make Engine fall back to a real headless
+    browser hitting http://example.com over the actual network — flaky and
+    slow. The cascade itself (falling back to the browser) is covered by
+    test_engine_login_browser_fallback.py instead."""
+    import vantis.utils.browser_crawler as bc
+
+    monkeypatch.setattr(bc, "browser_login", lambda *a, **k: None)
 
 LOGIN_PAGE = """
 <form action="/do-login" method="post">
