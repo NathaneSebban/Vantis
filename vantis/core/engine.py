@@ -12,7 +12,7 @@ from typing import Any, Callable, Optional
 from pathlib import Path
 
 from vantis.core.plugin_base import ModuleContext, ScanModule
-from vantis.core.report import Finding, Report, Severity
+from vantis.core.report import Confidence, Finding, Report, Severity
 from vantis.core.target import Target
 
 
@@ -90,14 +90,30 @@ class Engine:
         # supplied, submit the target's own login form up front and use the
         # resulting session cookies as this scan's authentication, in
         # addition to (never overwriting) any explicitly-provided
-        # auth_headers/auth_cookies.
+        # auth_headers/auth_cookies. The outcome (success/failure + reason)
+        # is recorded here and surfaced as a Finding at the start of run(),
+        # so it's visible in the live feed and the final report — not just
+        # in a server log the operator would otherwise never see.
+        self._login_result: dict | None = None
         if login_url and login_username and login_password:
             from vantis.utils.auth_login import perform_login
             from vantis.utils.http_client import HttpClient
 
             login_client = HttpClient(timeout=http_timeout, delay=rate_limit_delay, headers=auth_headers)
-            log = (lambda m: print(f"[login] {m}")) if verbose else (lambda _m: None)
-            cookies = perform_login(login_client, login_url, login_username, login_password, log=log)
+            login_messages: list[str] = []
+
+            def _login_log(m: str) -> None:
+                login_messages.append(m)
+                if verbose:
+                    print(f"[login] {m}")
+
+            cookies = perform_login(login_client, login_url, login_username, login_password, log=_login_log)
+            self._login_result = {
+                "success": bool(cookies),
+                "cookie_count": len(cookies) if cookies else 0,
+                "reason": login_messages[-1] if login_messages else "",
+                "login_url": login_url,
+            }
             if cookies:
                 auth_cookies = {**cookies, **(auth_cookies or {})}
 
@@ -239,6 +255,37 @@ class Engine:
 
         if not self._modules:
             self.discover_modules()
+
+        # Surface the automated-login outcome as an ordinary finding, first —
+        # so it shows up at the top of the live feed and in every report
+        # export, instead of being visible only in a server log.
+        if self._login_result is not None:
+            lr = self._login_result
+            if lr["success"]:
+                login_finding = Finding(
+                    module="auth-login", confidence=Confidence.HIGH,
+                    title="Automated login succeeded",
+                    severity=Severity.INFO,
+                    target=str(self.target),
+                    matched_at=lr["login_url"],
+                    description=f"Vantis logged in via {lr['login_url']} and obtained "
+                                f"{lr['cookie_count']} session cookie(s); every module below ran authenticated.",
+                )
+            else:
+                login_finding = Finding(
+                    module="auth-login", confidence=Confidence.HIGH,
+                    title="Automated login failed",
+                    severity=Severity.LOW,
+                    target=str(self.target),
+                    matched_at=lr["login_url"],
+                    description=f"Vantis could not log in via {lr['login_url']}"
+                                + (f": {lr['reason']}." if lr["reason"] else "."),
+                    remediation="Double-check the login URL and credentials, and confirm the page has a "
+                                "standard HTML <form> with a password field (JS-driven login flows aren't "
+                                "detected). Modules below ran UNAUTHENTICATED.",
+                )
+            self.report.add(login_finding)
+            self._emit(progress_callback, "finding", {"module": login_finding.module, "finding": login_finding})
 
         workers = max_workers or self.max_workers
         order = {"recon": 0, "web": 1, "cve": 2}
