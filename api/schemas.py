@@ -7,10 +7,19 @@ touched.
 from __future__ import annotations
 
 import ipaddress
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
+
+
+def _as_utc(v: Optional[datetime]) -> Optional[datetime]:
+    """Timestamps are stored as naive UTC (the DB strips tzinfo). Tag them as
+    UTC on the way out so clients (e.g. `new Date(...)` in the browser) convert
+    to the viewer's local time instead of treating UTC as local."""
+    if v is not None and v.tzinfo is None:
+        return v.replace(tzinfo=timezone.utc)
+    return v
 
 from api.config import get_settings
 from vantis.core.target import Target
@@ -113,6 +122,10 @@ class ScanSummary(BaseModel):
     findings_count: int = 0
     severity_counts: SeverityCounts = Field(default_factory=SeverityCounts)
 
+    @field_serializer("created_at", "started_at", "finished_at")
+    def _ser_utc(self, v: Optional[datetime]) -> Optional[datetime]:
+        return _as_utc(v)
+
 
 class ScanDetail(ScanSummary):
     """Full status, including live progress while running."""
@@ -196,6 +209,10 @@ class ScheduleOut(BaseModel):
     next_run_at: datetime
     last_run_at: Optional[datetime] = None
     last_scan_id: str = ""
+
+    @field_serializer("created_at", "next_run_at", "last_run_at")
+    def _ser_utc(self, v: Optional[datetime]) -> Optional[datetime]:
+        return _as_utc(v)
 
 
 class ScheduleUpdate(BaseModel):
