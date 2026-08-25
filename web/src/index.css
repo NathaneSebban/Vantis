@@ -65,25 +65,49 @@ body,
     mask-image: radial-gradient(ellipse 92% 82% at 50% 38%, #000 55%, transparent 100%);
   }
 
-  /* Neon-violet spotlight over the grid, following the cursor (see GridGlow). */
-  .grid-glow {
+  /* Neon violet light that wanders on its own along the grid lines: a fixed,
+     bright grid layer (aligned to the base 46px grid) revealed through a soft
+     blob whose position is animated across the viewport. Two blobs on
+     different paths give the impression of light drifting on the lines. */
+  .grid-flow {
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.4s ease;
     background-image:
-      radial-gradient(180px circle at var(--mx, -400px) var(--my, -400px), rgba(124, 92, 255, 0.12), transparent 70%),
-      linear-gradient(to right, rgba(109, 79, 224, 0.5) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(109, 79, 224, 0.5) 1px, transparent 1px);
-    background-size: 100% 100%, 46px 46px, 46px 46px;
-    -webkit-mask-image: radial-gradient(190px circle at var(--mx, -400px) var(--my, -400px), #000 0%, #000 38%, transparent 72%);
-    mask-image: radial-gradient(190px circle at var(--mx, -400px) var(--my, -400px), #000 0%, #000 38%, transparent 72%);
-    will-change: mask-position, background-position;
+      linear-gradient(to right, rgba(109, 79, 224, 0.6) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(109, 79, 224, 0.6) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(circle, #000 0%, #000 20%, transparent 62%);
+    mask-image: radial-gradient(circle, #000 0%, #000 20%, transparent 62%);
+    -webkit-mask-size: 520px 520px;
+    mask-size: 520px 520px;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    will-change: -webkit-mask-position, mask-position;
+  }
+  .grid-flow-a {
+    animation: gridflow-a 26s ease-in-out infinite;
+  }
+  .grid-flow-b {
+    opacity: 0.7;
+    animation: gridflow-b 34s ease-in-out infinite;
+  }
+  @keyframes gridflow-a {
+    0% { -webkit-mask-position: -12% 8%; mask-position: -12% 8%; }
+    25% { -webkit-mask-position: 68% 26%; mask-position: 68% 26%; }
+    50% { -webkit-mask-position: 42% 88%; mask-position: 42% 88%; }
+    75% { -webkit-mask-position: 96% 58%; mask-position: 96% 58%; }
+    100% { -webkit-mask-position: -12% 8%; mask-position: -12% 8%; }
+  }
+  @keyframes gridflow-b {
+    0% { -webkit-mask-position: 108% 82%; mask-position: 108% 82%; }
+    30% { -webkit-mask-position: 24% 64%; mask-position: 24% 64%; }
+    60% { -webkit-mask-position: 82% 6%; mask-position: 82% 6%; }
+    100% { -webkit-mask-position: 108% 82%; mask-position: 108% 82%; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .grid-glow {
+    .grid-flow {
       display: none;
     }
   }

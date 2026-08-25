@@ -1,7 +1,7 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import wordmark from "./assets/wordmark.png";
 import { Footer } from "./components/Footer";
-import { GridGlow } from "./components/GridGlow";
+import { GridFlow } from "./components/GridFlow";
 import { Landing } from "./pages/Landing";
 import { ScanLive } from "./pages/ScanLive";
 import { ScanReport } from "./pages/ScanReport";
@@ -36,7 +36,7 @@ function Nav() {
 export default function App() {
   return (
     <div className="flex min-h-full flex-col">
-      <GridGlow />
+      <GridFlow />
       <Nav />
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
         <Routes>
