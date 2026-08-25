@@ -65,49 +65,50 @@ body,
     mask-image: radial-gradient(ellipse 92% 82% at 50% 38%, #000 55%, transparent 100%);
   }
 
-  /* Neon violet light that wanders on its own along the grid lines: a fixed,
-     bright grid layer (aligned to the base 46px grid) revealed through a soft
-     blob whose position is animated across the viewport. Two blobs on
-     different paths give the impression of light drifting on the lines. */
-  .grid-flow {
+  /* Thin neon dashes that run along grid lines and cross the page
+     intermittently — a bright soft segment travels the full length of a fixed
+     grid row/column, then pauses, then repeats. Each beam sits on a grid
+     coordinate (top/left set inline as a multiple of 46px). */
+  .beam {
     position: fixed;
-    inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-image:
-      linear-gradient(to right, rgba(109, 79, 224, 0.6) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(109, 79, 224, 0.6) 1px, transparent 1px);
-    background-size: 46px 46px;
-    -webkit-mask-image: radial-gradient(circle, #000 0%, #000 20%, transparent 62%);
-    mask-image: radial-gradient(circle, #000 0%, #000 20%, transparent 62%);
-    -webkit-mask-size: 520px 520px;
-    mask-size: 520px 520px;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    will-change: -webkit-mask-position, mask-position;
+    opacity: 0;
+    filter: drop-shadow(0 0 5px rgba(124, 92, 255, 0.7));
+    will-change: background-position, opacity;
   }
-  .grid-flow-a {
-    animation: gridflow-a 26s ease-in-out infinite;
+  .beam-h {
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(to right, transparent 43%, rgba(124, 92, 255, 0.9) 50%, transparent 57%);
+    background-repeat: no-repeat;
+    background-size: 260% 100%;
+    animation: beam-h 1s linear infinite;
   }
-  .grid-flow-b {
-    opacity: 0.7;
-    animation: gridflow-b 34s ease-in-out infinite;
+  .beam-v {
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent 43%, rgba(124, 92, 255, 0.9) 50%, transparent 57%);
+    background-repeat: no-repeat;
+    background-size: 100% 260%;
+    animation: beam-v 1s linear infinite;
   }
-  @keyframes gridflow-a {
-    0% { -webkit-mask-position: -12% 8%; mask-position: -12% 8%; }
-    25% { -webkit-mask-position: 68% 26%; mask-position: 68% 26%; }
-    50% { -webkit-mask-position: 42% 88%; mask-position: 42% 88%; }
-    75% { -webkit-mask-position: 96% 58%; mask-position: 96% 58%; }
-    100% { -webkit-mask-position: -12% 8%; mask-position: -12% 8%; }
+  @keyframes beam-h {
+    0% { background-position: -35% 0; opacity: 0; }
+    6% { opacity: 1; }
+    46% { background-position: 135% 0; opacity: 1; }
+    52%, 100% { background-position: 135% 0; opacity: 0; }
   }
-  @keyframes gridflow-b {
-    0% { -webkit-mask-position: 108% 82%; mask-position: 108% 82%; }
-    30% { -webkit-mask-position: 24% 64%; mask-position: 24% 64%; }
-    60% { -webkit-mask-position: 82% 6%; mask-position: 82% 6%; }
-    100% { -webkit-mask-position: 108% 82%; mask-position: 108% 82%; }
+  @keyframes beam-v {
+    0% { background-position: 0 -35%; opacity: 0; }
+    6% { opacity: 1; }
+    46% { background-position: 0 135%; opacity: 1; }
+    52%, 100% { background-position: 0 135%; opacity: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .grid-flow {
+    .beam {
       display: none;
     }
   }
