@@ -65,6 +65,29 @@ body,
     mask-image: radial-gradient(ellipse 92% 82% at 50% 38%, #000 55%, transparent 100%);
   }
 
+  /* Neon-violet spotlight over the grid, following the cursor (see GridGlow). */
+  .grid-glow {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    background-image:
+      radial-gradient(180px circle at var(--mx, -400px) var(--my, -400px), rgba(124, 92, 255, 0.12), transparent 70%),
+      linear-gradient(to right, rgba(109, 79, 224, 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(109, 79, 224, 0.5) 1px, transparent 1px);
+    background-size: 100% 100%, 46px 46px, 46px 46px;
+    -webkit-mask-image: radial-gradient(190px circle at var(--mx, -400px) var(--my, -400px), #000 0%, #000 38%, transparent 72%);
+    mask-image: radial-gradient(190px circle at var(--mx, -400px) var(--my, -400px), #000 0%, #000 38%, transparent 72%);
+    will-change: mask-position, background-position;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .grid-glow {
+      display: none;
+    }
+  }
+
   ::selection {
     background: rgba(109, 79, 224, 0.25);
     color: var(--violet-ink);
