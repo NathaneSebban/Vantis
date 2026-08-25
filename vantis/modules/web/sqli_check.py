@@ -51,7 +51,7 @@ class SqliCheckModule(ScanModule):
 
         # Test real injection points discovered by the crawler; fall back to a
         # default parameter list against the URL the user pointed at.
-        points = discover_injection_points(client, target, self.log)
+        points = discover_injection_points(client, target, self.log, use_browser=self.ctx.browser_crawl)
         if not points:
             points = [InjectionPoint(url=target.url, param=p, source="default") for p in DEFAULT_PARAMS]
 

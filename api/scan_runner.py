@@ -86,6 +86,7 @@ class ScanManager:
         auth_headers: dict | None = None,
         auth_cookies: dict | None = None,
         enabled_modules: list[str] | None = None,
+        browser_crawl: bool = False,
     ) -> None:
         if self._executor is None:
             raise RuntimeError("ScanManager not started: bind_loop() was never called")
@@ -94,7 +95,7 @@ class ScanManager:
         # auth_* are passed as call arguments only — they live in-memory for the
         # duration of the run and are never persisted.
         self._executor.submit(self._run_job, scan_id, target, scope, modules,
-                              auth_headers, auth_cookies, enabled_modules)
+                              auth_headers, auth_cookies, enabled_modules, browser_crawl)
 
     def request_cancel(self, scan_id: str) -> bool:
         """Signal a running job to stop at the next module boundary.
@@ -152,6 +153,7 @@ class ScanManager:
         auth_headers: dict | None = None,
         auth_cookies: dict | None = None,
         enabled_modules: list[str] | None = None,
+        browser_crawl: bool = False,
     ) -> None:
         settings = get_settings()
         db = SessionLocal()
@@ -225,6 +227,7 @@ class ScanManager:
                 auth_cookies=auth_cookies or None,
                 max_workers=settings.scan_workers,
                 enabled_modules=enabled_modules or None,
+                browser_crawl=browser_crawl,
             )
             engine.run(progress_callback=progress)
 

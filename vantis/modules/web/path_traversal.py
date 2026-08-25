@@ -38,7 +38,7 @@ class PathTraversalModule(ScanModule):
         client = self.ctx.new_http_client()
         target = self.ctx.target
 
-        discovered = discover_injection_points(client, target, self.log)
+        discovered = discover_injection_points(client, target, self.log, use_browser=self.ctx.browser_crawl)
         points = [p for p in discovered if p.param.lower() in DEFAULT_PARAMS]
         for p in DEFAULT_PARAMS:
             points.append(InjectionPoint(url=target.url, param=p, source="default"))

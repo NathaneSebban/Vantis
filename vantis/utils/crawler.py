@@ -124,6 +124,7 @@ def discover_injection_points(
     max_points: int = 25,
     max_pages: int = 8,
     use_wayback: bool = True,
+    use_browser: bool = False,
 ) -> list[InjectionPoint]:
     """Discover injection points for `target`. Returns [] if nothing is found
     (callers then fall back to their default parameter list)."""
@@ -176,6 +177,19 @@ def discover_injection_points(
         for link in _same_scope_links(resp.text, page_url, target):
             if urlparse(link)._replace(fragment="").geturl() not in visited:
                 queue.append(link)
+
+    # 4) headless-browser rendering: catches SPA content the static crawler
+    # can never see (client-side-rendered links/forms) and, most valuably,
+    # the real XHR/fetch API calls the app makes on load. Optional — a real
+    # browser is slow, so this only runs when explicitly requested.
+    if use_browser and len(points) < max_points:
+        try:
+            from vantis.utils.browser_crawler import browser_crawl
+
+            for bp in browser_crawl(target, max_points=max_points - len(points)):
+                add(bp.url, bp.param, bp.source)
+        except Exception as e:  # noqa: BLE001 - discovery must never break a scan
+            log(f"browser crawl error: {e}")
 
     if points:
         log(f"discovered {len(points)} injection point(s)")

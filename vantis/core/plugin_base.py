@@ -26,6 +26,11 @@ class ModuleContext:
     # new_http_client(), so all modules test the target as a logged-in user.
     auth_headers: dict | None = None
     auth_cookies: dict | None = None
+    # Headless-browser crawling (Playwright): renders the target so injection
+    # discovery sees JS-rendered links/forms and real XHR/fetch API calls.
+    # Off by default (slower, extra dependency); modules pass this through to
+    # discover_injection_points(use_browser=...).
+    browser_crawl: bool = False
 
     def new_http_client(self):
         """Build an HTTP client pre-configured with this scan's timeout, rate

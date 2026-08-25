@@ -37,7 +37,7 @@ class SstiCheckModule(ScanModule):
         client = self.ctx.new_http_client()
         target = self.ctx.target
 
-        discovered = discover_injection_points(client, target, self.log)
+        discovered = discover_injection_points(client, target, self.log, use_browser=self.ctx.browser_crawl)
         points = list(discovered)
         for p in DEFAULT_PARAMS:
             points.append(InjectionPoint(url=target.url, param=p, source="default"))

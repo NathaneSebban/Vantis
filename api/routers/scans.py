@@ -104,6 +104,7 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
         scan_id, payload.target, payload.scope, payload.modules,
         auth_headers=payload.headers or None, auth_cookies=payload.cookies or None,
         enabled_modules=payload.module_names or None,
+        browser_crawl=payload.browser_crawl,
     )
     return ScanCreatedResponse(scan_id=scan_id, status=ScanStatus.QUEUED)
 

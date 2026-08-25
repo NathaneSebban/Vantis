@@ -71,6 +71,7 @@ class Engine:
         auth_cookies: dict | None = None,
         max_workers: int = 1,
         enabled_modules: list[str] | None = None,
+        browser_crawl: bool = False,
     ):
         self.target = target
         # When specific module names are requested, discover across all
@@ -86,6 +87,7 @@ class Engine:
             verbose=verbose,
             auth_headers=auth_headers,
             auth_cookies=auth_cookies,
+            browser_crawl=browser_crawl,
         )
         self.report = Report(target=str(target))
         self._modules: list[type[ScanModule]] = []

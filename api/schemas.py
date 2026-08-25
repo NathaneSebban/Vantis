@@ -52,6 +52,9 @@ class ScanCreate(BaseModel):
     # Optional: specific module names to run (e.g. ["tls-audit", "cors-misconfig"]).
     # When provided, overrides the category selection with an exact module set.
     module_names: list[str] = Field(default_factory=list)
+    # Render the target in headless Chromium to discover JS-rendered content
+    # and real XHR/fetch API calls. Slower; off by default.
+    browser_crawl: bool = False
     # Authenticated scanning. These are used in-memory for the run only and are
     # NEVER written to the database (they are credentials).
     headers: dict[str, str] = Field(default_factory=dict, description="Extra request headers (e.g. Authorization)")

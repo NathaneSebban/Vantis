@@ -33,7 +33,7 @@ class OpenRedirectModule(ScanModule):
 
         # Prefer redirect-named params among discovered points; always also test
         # the default redirect param list against the target URL.
-        discovered = discover_injection_points(client, target, self.log)
+        discovered = discover_injection_points(client, target, self.log, use_browser=self.ctx.browser_crawl)
         points: list[InjectionPoint] = [p for p in discovered if p.param.lower() in REDIRECT_PARAMS]
         for p in REDIRECT_PARAMS:
             points.append(InjectionPoint(url=target.url, param=p, source="default"))

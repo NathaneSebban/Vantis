@@ -30,6 +30,9 @@ api = [
 ]
 # Optional PDF report export (pure-Python, no native libraries).
 pdf = ["fpdf2>=2.7"]
+# Optional headless-browser crawling for JS-rendered apps (SPAs) and XHR/fetch
+# API-call discovery. After installing, also run: playwright install chromium
+browser = ["playwright>=1.40"]
 # Optional MySQL/MariaDB driver (e.g. a local WAMP/phpMyAdmin database).
 # Enable with: pip install -e ".[api,mysql]" and set VANTIS_DATABASE_URL to
 # mysql+pymysql://user:pass@localhost:3306/vantis

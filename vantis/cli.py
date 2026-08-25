@@ -41,6 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--workers", type=int, default=1,
                         help="Concurrent workers for web/cve modules (default 1 = sequential). Higher is faster.")
+    parser.add_argument(
+        "--browser-crawl", action="store_true",
+        help="Render the target in headless Chromium to discover JS-rendered links/forms and real "
+             "XHR/fetch API calls (requires: pip install vantis[browser] && playwright install chromium). "
+             "Slower; off by default.",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose module logging")
     parser.add_argument(
         "--yes-i-am-authorized",
@@ -92,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         auth_headers=auth_headers or None,
         auth_cookies=auth_cookies or None,
         max_workers=args.workers,
+        browser_crawl=args.browser_crawl,
     )
     report = engine.run()
 
