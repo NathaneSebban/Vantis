@@ -325,6 +325,15 @@ export function Landing() {
             </div>
           )}
         </div>
+        {!canLaunch && targetValid && effective.size === 0 && (
+          <p className="mt-3 text-center text-sm text-amber-700">
+            Select at least one module — login, headers/cookies and browser crawling only apply to modules
+            that actually run; with none selected there is nothing to scan.{" "}
+            <button type="button" onClick={() => setSelected(null)} className="font-semibold underline underline-offset-2">
+              Select all
+            </button>
+          </p>
+        )}
         {createScan.isError && (
           <p className="mt-3 text-sm text-red-600">
             Failed to launch: {createScan.error instanceof ApiError ? createScan.error.message : "unknown error"}
