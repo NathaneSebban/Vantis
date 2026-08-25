@@ -7,6 +7,7 @@ Command-line entry point.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 
 from vantis.core.engine import AuthorizationError, Engine
@@ -18,7 +19,13 @@ def build_parser() -> argparse.ArgumentParser:
         prog="vantis",
         description="Modular vulnerability scanner (recon + web + CVE templates) for AUTHORIZED security testing only.",
     )
-    parser.add_argument("--target", "-t", required=True, help="Target URL, domain or IP (e.g. https://example.com)")
+    parser.add_argument(
+        "--target", "-t", required=True,
+        help="Target URL, domain or IP (e.g. https://example.com). Comma-separated for multiple "
+             "targets in one run (e.g. -t example.com,api.example.com,other.org) — each is scanned "
+             "independently with the same options, authorization is confirmed for the whole list once, "
+             "and --output (when given) is treated as a prefix, one report per target.",
+    )
     parser.add_argument(
         "--scope",
         help="Comma-separated list of additional in-scope hosts/domains/CIDRs (defaults to the target's own domain)",
@@ -73,18 +80,58 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _write_report(report, output: str) -> None:
+    if output.endswith(".json"):
+        report.to_json(output)
+    elif output.endswith(".md"):
+        report.to_markdown(output)
+    elif output.endswith(".html"):
+        report.to_html(output)
+    elif output.endswith(".pdf"):
+        report.to_pdf(output)
+    elif output.endswith(".sarif"):
+        report.to_sarif(output)
+    else:
+        print(f"[!] Unknown output extension for '{output}', defaulting to JSON")
+        report.to_json(output + ".json")
+    print(f"[*] Report written to {output}")
+
+
+def _output_path_for(output: str | None, target_raw: str, multi: bool) -> str | None:
+    """When scanning multiple targets, turn a single --output path into one
+    per target by inserting a sanitized target slug before the extension.
+    Single-target runs are unaffected."""
+    if not output or not multi:
+        return output
+    stem, _, ext = output.rpartition(".")
+    slug = re.sub(r"[^a-zA-Z0-9.-]+", "_", target_raw).strip("_")
+    if stem:
+        return f"{stem}-{slug}.{ext}"
+    return f"{output}-{slug}"
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    target_list = [t.strip() for t in args.target.split(",") if t.strip()]
+    if not target_list:
+        print("[!] No target given")
+        return 2
+    multi = len(target_list) > 1
+
     scope = [s.strip() for s in args.scope.split(",")] if args.scope else []
     try:
-        target = Target(raw=args.target, scope=scope)
+        targets = [Target(raw=t, scope=scope) for t in target_list]
     except ValueError as e:
         print(f"[!] Invalid target: {e}")
         return 2
 
+    # One authorization confirmation covers the whole batch — re-prompting
+    # per target would be noise, and the operator is confirming the same
+    # thing (they are authorized to test everything they just listed).
+    banner_target = targets[0] if not multi else f"{len(targets)} targets ({', '.join(target_list)})"
     try:
-        Engine.confirm_authorization(target, assume_yes=args.yes_i_am_authorized)
+        Engine.confirm_authorization(banner_target, assume_yes=args.yes_i_am_authorized)
     except AuthorizationError as e:
         print(f"[!] {e}")
         return 1
@@ -106,49 +153,47 @@ def main(argv: list[str] | None = None) -> int:
     secondary_auth_headers = _parse_pairs(args.secondary_header, ":", "secondary header")
     secondary_auth_cookies = _parse_pairs(args.secondary_cookie, "=", "secondary cookie")
 
-    engine = Engine(
-        target=target,
-        categories=categories,
-        verbose=args.verbose,
-        http_timeout=args.timeout,
-        rate_limit_delay=args.delay,
-        auth_headers=auth_headers or None,
-        auth_cookies=auth_cookies or None,
-        secondary_auth_headers=secondary_auth_headers or None,
-        secondary_auth_cookies=secondary_auth_cookies or None,
-        max_workers=args.workers,
-        browser_crawl=args.browser_crawl,
-        login_url=args.login_url,
-        login_username=args.login_username,
-        login_password=args.login_password,
-    )
-    report = engine.run()
+    exit_code = 0
+    for i, target in enumerate(targets, start=1):
+        if multi:
+            print(f"\n{'#' * 70}\n# Target {i}/{len(targets)}: {target}\n{'#' * 70}")
 
-    print("\n" + "=" * 70)
-    counts = {sev: len(items) for sev, items in report.by_severity().items()}
-    print(f" Scan complete: {len(report.findings)} finding(s)")
-    for sev in ["critical", "high", "medium", "low", "info"]:
-        if counts.get(sev):
-            print(f"   {sev.upper():<9} {counts[sev]}")
-    print("=" * 70)
+        engine = Engine(
+            target=target,
+            categories=categories,
+            verbose=args.verbose,
+            http_timeout=args.timeout,
+            rate_limit_delay=args.delay,
+            auth_headers=auth_headers or None,
+            auth_cookies=auth_cookies or None,
+            secondary_auth_headers=secondary_auth_headers or None,
+            secondary_auth_cookies=secondary_auth_cookies or None,
+            max_workers=args.workers,
+            browser_crawl=args.browser_crawl,
+            login_url=args.login_url,
+            login_username=args.login_username,
+            login_password=args.login_password,
+        )
+        try:
+            report = engine.run()
+        except Exception as e:  # noqa: BLE001 - one target's crash shouldn't abort the whole batch
+            print(f"[!] Scan of {target} failed: {e}")
+            exit_code = 1
+            continue
 
-    if args.output:
-        if args.output.endswith(".json"):
-            report.to_json(args.output)
-        elif args.output.endswith(".md"):
-            report.to_markdown(args.output)
-        elif args.output.endswith(".html"):
-            report.to_html(args.output)
-        elif args.output.endswith(".pdf"):
-            report.to_pdf(args.output)
-        elif args.output.endswith(".sarif"):
-            report.to_sarif(args.output)
-        else:
-            print(f"[!] Unknown output extension for '{args.output}', defaulting to JSON")
-            report.to_json(args.output + ".json")
-        print(f"[*] Report written to {args.output}")
+        print("\n" + "=" * 70)
+        counts = {sev: len(items) for sev, items in report.by_severity().items()}
+        print(f" Scan complete for {target}: {len(report.findings)} finding(s)")
+        for sev in ["critical", "high", "medium", "low", "info"]:
+            if counts.get(sev):
+                print(f"   {sev.upper():<9} {counts[sev]}")
+        print("=" * 70)
 
-    return 0
+        output = _output_path_for(args.output, target_list[i - 1], multi)
+        if output:
+            _write_report(report, output)
+
+    return exit_code
 
 
 if __name__ == "__main__":

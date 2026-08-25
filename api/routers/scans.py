@@ -16,6 +16,8 @@ from api.config import get_settings
 from api.scan_runner import scan_manager
 from api.security import require_api_key, websocket_authorized
 from api.schemas import (
+    BatchScanCreate,
+    BatchScanCreatedResponse,
     FindingOut,
     FindingStatusUpdate,
     ScanCreate,
@@ -74,6 +76,35 @@ def _get_scan_or_404(db: Session, scan_id: str) -> ScanRow:
 
 # -- routes -----------------------------------------------------------
 
+def _queue_scan(
+    db: Session, target: str, scope: list[str], modules: list[str], *,
+    module_names: list[str] | None, browser_crawl: bool,
+    headers: dict, cookies: dict, secondary_headers: dict, secondary_cookies: dict,
+    login_url: str | None, login_username: str | None, login_password: str | None,
+) -> ScanCreatedResponse:
+    """Shared by the single-target and batch endpoints: create the ScanRow and
+    hand it to the ScanManager. headers/cookies/login credentials are passed
+    to the runner in-memory only and never stored."""
+    scan_id = str(uuid.uuid4())
+    scan = ScanRow(
+        id=scan_id, target=target, scope=",".join(scope), modules=",".join(modules),
+        status=ScanStatus.QUEUED,
+    )
+    db.add(scan)
+    db.commit()
+
+    scan_manager.submit(
+        scan_id, target, scope, modules,
+        auth_headers=headers or None, auth_cookies=cookies or None,
+        secondary_auth_headers=secondary_headers or None,
+        secondary_auth_cookies=secondary_cookies or None,
+        enabled_modules=module_names or None,
+        browser_crawl=browser_crawl,
+        login_url=login_url, login_username=login_username, login_password=login_password,
+    )
+    return ScanCreatedResponse(scan_id=scan_id, status=ScanStatus.QUEUED)
+
+
 @router.post("", response_model=ScanCreatedResponse, status_code=202, dependencies=[Depends(require_api_key)])
 @limiter.limit(get_settings().scan_rate_limit)
 def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get_db)) -> ScanCreatedResponse:
@@ -88,30 +119,42 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
             ),
         )
 
-    scan_id = str(uuid.uuid4())
-    scan = ScanRow(
-        id=scan_id,
-        target=payload.target,
-        scope=",".join(payload.scope),
-        modules=",".join(payload.modules),
-        status=ScanStatus.QUEUED,
+    return _queue_scan(
+        db, payload.target, payload.scope, payload.modules,
+        module_names=payload.module_names, browser_crawl=payload.browser_crawl,
+        headers=payload.headers, cookies=payload.cookies,
+        secondary_headers=payload.secondary_headers, secondary_cookies=payload.secondary_cookies,
+        login_url=payload.login_url, login_username=payload.login_username, login_password=payload.login_password,
     )
-    db.add(scan)
-    db.commit()
 
-    # headers/cookies are handed to the runner in-memory only — never stored.
-    scan_manager.submit(
-        scan_id, payload.target, payload.scope, payload.modules,
-        auth_headers=payload.headers or None, auth_cookies=payload.cookies or None,
-        secondary_auth_headers=payload.secondary_headers or None,
-        secondary_auth_cookies=payload.secondary_cookies or None,
-        enabled_modules=payload.module_names or None,
-        browser_crawl=payload.browser_crawl,
-        login_url=payload.login_url or None,
-        login_username=payload.login_username or None,
-        login_password=payload.login_password or None,
-    )
-    return ScanCreatedResponse(scan_id=scan_id, status=ScanStatus.QUEUED)
+
+@router.post("/batch", response_model=BatchScanCreatedResponse, status_code=202,
+             dependencies=[Depends(require_api_key)])
+@limiter.limit(get_settings().scan_rate_limit)
+def create_batch_scan(request: Request, payload: BatchScanCreate, db: Session = Depends(get_db)) -> BatchScanCreatedResponse:
+    """Queue one independent scan per target in ``payload.targets``, sharing
+    every other option. One authorization confirmation covers the whole
+    batch, matching the CLI's --target a,b,c behaviour."""
+    if not payload.authorized:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Authorization required: set 'authorized': true to confirm you are "
+                "permitted to test every target in this batch. Unauthorized scanning is illegal."
+            ),
+        )
+
+    scans = [
+        _queue_scan(
+            db, target, payload.scope, payload.modules,
+            module_names=payload.module_names, browser_crawl=payload.browser_crawl,
+            headers=payload.headers, cookies=payload.cookies,
+            secondary_headers=payload.secondary_headers, secondary_cookies=payload.secondary_cookies,
+            login_url=payload.login_url, login_username=payload.login_username, login_password=payload.login_password,
+        )
+        for target in payload.targets
+    ]
+    return BatchScanCreatedResponse(scans=scans)
 
 
 @router.get("", response_model=ScanListResponse, dependencies=[Depends(require_api_key)])

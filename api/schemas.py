@@ -45,6 +45,35 @@ def _host_is_private(host: str) -> bool:
     )
 
 
+def _validate_target_str(v: str) -> str:
+    v = v.strip()
+    if not v:
+        raise ValueError("target must not be empty")
+    # Reuse the library's own validation so the API and CLI agree on what
+    # a plausible target is — rejected here, before any scan is scheduled.
+    try:
+        target = Target(raw=v)
+    except ValueError as e:
+        raise ValueError(str(e)) from e
+    # Optional anti-SSRF guard (off by default).
+    if get_settings().block_private_targets and _host_is_private(target.host):
+        raise ValueError(
+            "target resolves to a private/loopback/reserved address, which is "
+            "blocked by this server's policy (VANTIS_BLOCK_PRIVATE_TARGETS)"
+        )
+    return v
+
+
+def _validate_modules_list(v: list[str]) -> list[str]:
+    cleaned = [m.strip().lower() for m in v if m.strip()]
+    if not cleaned:
+        raise ValueError("at least one module category is required")
+    unknown = [m for m in cleaned if m not in VALID_CATEGORIES]
+    if unknown:
+        raise ValueError(f"unknown module categories: {', '.join(unknown)} (allowed: recon, web, cve)")
+    return cleaned
+
+
 class ScanCreate(BaseModel):
     target: str = Field(..., description="Target URL, domain or IP, e.g. https://example.com")
     scope: list[str] = Field(default_factory=list, description="Additional in-scope hosts/domains/CIDRs")
@@ -80,38 +109,54 @@ class ScanCreate(BaseModel):
     @field_validator("target")
     @classmethod
     def _validate_target(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("target must not be empty")
-        # Reuse the library's own validation so the API and CLI agree on what
-        # a plausible target is — rejected here, before any scan is scheduled.
-        try:
-            target = Target(raw=v)
-        except ValueError as e:
-            raise ValueError(str(e)) from e
-        # Optional anti-SSRF guard (off by default).
-        if get_settings().block_private_targets and _host_is_private(target.host):
-            raise ValueError(
-                "target resolves to a private/loopback/reserved address, which is "
-                "blocked by this server's policy (VANTIS_BLOCK_PRIVATE_TARGETS)"
-            )
-        return v
+        return _validate_target_str(v)
 
     @field_validator("modules")
     @classmethod
     def _validate_modules(cls, v: list[str]) -> list[str]:
-        cleaned = [m.strip().lower() for m in v if m.strip()]
-        if not cleaned:
-            raise ValueError("at least one module category is required")
-        unknown = [m for m in cleaned if m not in VALID_CATEGORIES]
-        if unknown:
-            raise ValueError(f"unknown module categories: {', '.join(unknown)} (allowed: recon, web, cve)")
-        return cleaned
+        return _validate_modules_list(v)
 
 
 class ScanCreatedResponse(BaseModel):
     scan_id: str
     status: str
+
+
+class BatchScanCreate(BaseModel):
+    """Scan several targets in one request, sharing every other option
+    (modules, auth, login, etc). Each target becomes its own independent
+    scan/job — a failure on one target never blocks the others."""
+
+    targets: list[str] = Field(..., min_length=1, max_length=25,
+                                description="Target URLs/domains/IPs, e.g. [\"https://a.com\", \"https://b.com\"]")
+    scope: list[str] = Field(default_factory=list)
+    modules: list[str] = Field(default_factory=lambda: ["recon", "web", "cve"])
+    module_names: list[str] = Field(default_factory=list)
+    browser_crawl: bool = False
+    headers: dict[str, str] = Field(default_factory=dict)
+    cookies: dict[str, str] = Field(default_factory=dict)
+    secondary_headers: dict[str, str] = Field(default_factory=dict)
+    secondary_cookies: dict[str, str] = Field(default_factory=dict)
+    login_url: str | None = None
+    login_username: str | None = None
+    login_password: str | None = None
+    authorized: bool = Field(..., description="Must be true for every target in this batch.")
+
+    @field_validator("targets")
+    @classmethod
+    def _validate_targets(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("targets must not be empty")
+        return [_validate_target_str(t) for t in v]
+
+    @field_validator("modules")
+    @classmethod
+    def _validate_modules(cls, v: list[str]) -> list[str]:
+        return _validate_modules_list(v)
+
+
+class BatchScanCreatedResponse(BaseModel):
+    scans: list[ScanCreatedResponse]
 
 
 class SeverityCounts(BaseModel):

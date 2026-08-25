@@ -263,5 +263,15 @@ class Engine:
                 for idx, m in indexed:
                     self._run_module(m, idx, total, progress_callback, lock)
 
+        # Cross-finding correlation: run once, after every module has
+        # finished, over the complete finding set. Emitted as ordinary
+        # "finding" events so the API/CLI persist and display them exactly
+        # like any other finding.
+        from vantis.core.correlator import correlate
+
+        for f in correlate(self.report.findings):
+            self.report.add(f)
+            self._emit(progress_callback, "finding", {"module": f.module, "finding": f})
+
         self._emit(progress_callback, "scan_end", {"total_findings": len(self.report.findings)})
         return self.report

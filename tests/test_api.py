@@ -102,6 +102,30 @@ def test_scan_rejects_unknown_module(client):
     assert r.status_code == 422
 
 
+# -- multi-target (batch) scanning ------------------------------------
+
+def test_batch_scan_refused_without_authorization(client):
+    r = client.post("/api/scans/batch", json={"targets": ["https://a.com", "https://b.com"], "authorized": False})
+    assert r.status_code == 400
+
+
+def test_batch_scan_rejects_empty_targets(client):
+    r = client.post("/api/scans/batch", json={"targets": [], "authorized": True})
+    assert r.status_code == 422
+
+
+def test_batch_scan_creates_one_scan_per_target(client):
+    r = client.post("/api/scans/batch", json={
+        "targets": ["https://a.example.com", "https://b.example.com"], "authorized": True,
+    })
+    assert r.status_code == 202
+    scans = r.json()["scans"]
+    assert len(scans) == 2
+    assert len({s["scan_id"] for s in scans}) == 2  # distinct ids
+    for s in scans:
+        assert s["status"] == "queued"
+
+
 # -- full scan lifecycle ---------------------------------------------
 
 def test_full_scan_flow(client):
