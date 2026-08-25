@@ -29,6 +29,13 @@ export function Landing() {
   // null = "all modules" (default); a Set = an explicit user selection.
   const [selected, setSelected] = useState<Set<string> | null>(null);
 
+  // Automated form-based login (optional): submit the target's own login
+  // form ourselves instead of requiring an already-authenticated session.
+  const [loginEnabled, setLoginEnabled] = useState(false);
+  const [loginUrl, setLoginUrl] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
   const allNames = useMemo(() => new Set(modules.map((m) => m.name)), [modules]);
   const effective = selected ?? allNames;
   const targetValid = target.trim().length > 0;
@@ -47,6 +54,9 @@ export function Landing() {
         scope,
         modules: ["recon", "web", "cve"],
         module_names: selected ? Array.from(selected) : undefined,
+        login_url: loginEnabled ? loginUrl.trim() || undefined : undefined,
+        login_username: loginEnabled ? loginUsername.trim() || undefined : undefined,
+        login_password: loginEnabled ? loginPassword || undefined : undefined,
         authorized: true, // guaranteed by the disclaimer modal — the only caller
       });
       navigate(`/scans/${res.scan_id}`);
@@ -157,6 +167,45 @@ export function Landing() {
                 </div>
               </div>
               <ModulePicker selected={effective} onChange={(next) => setSelected(next)} />
+
+              <div className="mt-4 border-t border-[#eae5f8] pt-4">
+                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#8b84a3]">
+                  <input
+                    type="checkbox"
+                    checked={loginEnabled}
+                    onChange={(e) => setLoginEnabled(e.target.checked)}
+                    className="h-4 w-4 rounded border-[#cfc7e6] text-violetx accent-violetx"
+                  />
+                  Automated login
+                </label>
+                <p className="mt-1 text-xs text-[#9691ac]">
+                  Vantis submits the target's own login form itself with these credentials, and scans the
+                  authenticated area with the resulting session. Use a dedicated test account, never your real one.
+                </p>
+                {loginEnabled && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <input
+                      value={loginUrl}
+                      onChange={(e) => setLoginUrl(e.target.value)}
+                      placeholder="Login page URL"
+                      className="field"
+                    />
+                    <input
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      placeholder="Username / email"
+                      className="field"
+                    />
+                    <input
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="Password"
+                      type="password"
+                      className="field"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

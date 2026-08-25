@@ -83,6 +83,12 @@ export interface ScanCreate {
   scope: string[];
   modules: ModuleCategory[];
   module_names?: string[];
+  // Automated form-based login: instead of already having a session cookie,
+  // Vantis submits the target's own login form itself with these credentials.
+  // In-memory only on the backend, never persisted.
+  login_url?: string;
+  login_username?: string;
+  login_password?: string;
   authorized: boolean;
 }
 
