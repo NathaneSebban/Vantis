@@ -9,10 +9,10 @@ import { ScanHistory } from "./pages/ScanHistory";
 
 function Nav() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `relative rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
+    `relative px-1 py-1.5 text-sm font-medium transition after:absolute after:inset-x-0 after:-bottom-[1px] after:h-[2px] after:origin-center after:rounded-full after:bg-violetx after:transition-transform ${
       isActive
-        ? "text-violetx-ink bg-violetx-soft shadow-[0_0_0_1px_rgba(76,47,191,0.18)]"
-        : "text-[#635d80] hover:text-violetx-ink hover:bg-violetx-tint"
+        ? "text-violetx-ink after:scale-x-100"
+        : "text-[#635d80] hover:text-violetx-ink after:scale-x-0 hover:after:scale-x-100"
     }`;
   return (
     <header className="sticky top-0 z-30 border-b border-[#ece8f8] bg-white/80 backdrop-blur-xl">
@@ -20,7 +20,7 @@ function Nav() {
         <NavLink to="/" className="flex items-center">
           <img src={wordmark} alt="Vantis" className="h-6 object-contain" />
         </NavLink>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-6">
           <NavLink to="/" end className={linkClass}>
             Scan
           </NavLink>

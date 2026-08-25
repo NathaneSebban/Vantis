@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /scans/
+
+Sitemap: https://vantis.cyberxtel.com/sitemap.xml
