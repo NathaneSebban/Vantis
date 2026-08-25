@@ -1,0 +1,97 @@
+name: "Vantis Scan"
+description: >
+  Run a Vantis vulnerability scan and upload the results as SARIF to GitHub
+  code scanning. For AUTHORIZED security testing only — you are asserting,
+  by using this action, that you have explicit permission to scan `target`.
+author: "Nathane Sebban"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  target:
+    description: "Target URL, domain or IP to scan (e.g. https://staging.example.com). Must be a target you are authorized to test."
+    required: true
+  modules:
+    description: "Comma-separated module categories to run: recon,web,cve"
+    required: false
+    default: "recon,web,cve"
+  scope:
+    description: "Comma-separated additional in-scope hosts/domains"
+    required: false
+    default: ""
+  fail-on-severity:
+    description: "Fail the workflow if any finding at or above this severity is found: critical,high,medium,low,info,none"
+    required: false
+    default: "none"
+  sarif-file:
+    description: "Path to write the SARIF report to"
+    required: false
+    default: "vantis-results.sarif"
+  upload-sarif:
+    description: "Whether to upload the SARIF report to GitHub code scanning (requires security-events: write permission)"
+    required: false
+    default: "true"
+
+outputs:
+  sarif-file:
+    description: "Path to the generated SARIF report"
+    value: ${{ inputs.sarif-file }}
+  findings-count:
+    description: "Total number of findings"
+    value: ${{ steps.scan.outputs.findings-count }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Vantis
+      shell: bash
+      run: pip install "git+https://github.com/NathaneSebban/Vantis.git"
+
+    - name: Run scan
+      id: scan
+      shell: bash
+      run: |
+        set -e
+        vantis \
+          --target "${{ inputs.target }}" \
+          --modules "${{ inputs.modules }}" \
+          ${{ inputs.scope != '' && format('--scope "{0}"', inputs.scope) || '' }} \
+          --yes-i-am-authorized \
+          --output "${{ inputs.sarif-file }}"
+
+        count=$(python -c "import json; d=json.load(open('${{ inputs.sarif-file }}')); print(sum(len(r['results']) for r in d['runs']))")
+        echo "findings-count=$count" >> "$GITHUB_OUTPUT"
+        echo "Vantis found $count finding(s)."
+
+    - name: Upload SARIF to code scanning
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+
+    - name: Enforce severity gate
+      if: inputs.fail-on-severity != 'none'
+      shell: bash
+      run: |
+        python - <<'PY'
+        import json, sys
+        threshold = "${{ inputs.fail-on-severity }}"
+        weight = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+        data = json.load(open("${{ inputs.sarif-file }}"))
+        level_to_sev = {"error": "high", "warning": "medium", "note": "low"}
+        worst = -1
+        for run in data["runs"]:
+            for r in run["results"]:
+                sev = r.get("properties", {}).get("severity") or level_to_sev.get(r.get("level"), "info")
+                worst = max(worst, weight.get(sev, 0))
+        if worst >= weight.get(threshold, 99):
+            print(f"::error::Vantis found a finding at or above '{threshold}' severity.")
+            sys.exit(1)
+        print("Severity gate passed.")
+        PY

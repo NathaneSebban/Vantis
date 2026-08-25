@@ -1,0 +1,34 @@
+name: Vantis scan (manual, example)
+
+# Manual-dispatch only — deliberately never runs on push/PR/schedule. Vantis
+# actively probes whatever target you give it, so it must only ever run when
+# a human explicitly triggers it with a target they typed themselves and
+# confirms authorization for via the "authorized" input below.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Target URL/domain you are authorized to scan"
+        required: true
+      authorized:
+        description: "Type 'yes' to confirm you are authorized to scan this target"
+        required: true
+      fail-on-severity:
+        description: "Fail the run on findings at or above this severity"
+        required: false
+        default: "high"
+
+permissions:
+  contents: read
+  security-events: write  # required to upload SARIF to code scanning
+
+jobs:
+  scan:
+    if: ${{ github.event.inputs.authorized == 'yes' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Vantis
+        uses: NathaneSebban/Vantis@main
+        with:
+          target: ${{ github.event.inputs.target }}
+          fail-on-severity: ${{ github.event.inputs.fail-on-severity }}

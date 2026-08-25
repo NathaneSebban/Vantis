@@ -66,6 +66,18 @@ export interface ScanListResponse {
   items: ScanSummary[];
 }
 
+export interface TrendPoint {
+  scan_id: string;
+  created_at: string;
+  severity_counts: SeverityCounts;
+  findings_count: number;
+}
+
+export interface TrendResponse {
+  target: string;
+  points: TrendPoint[];
+}
+
 export interface ScanCreate {
   target: string;
   scope: string[];

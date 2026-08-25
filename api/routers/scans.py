@@ -27,6 +27,8 @@ from api.schemas import (
     ScanListResponse,
     ScanSummary,
     SeverityCounts,
+    TrendPoint,
+    TrendResponse,
 )
 from api.websocket_manager import ws_manager
 from vantis.core.report import Finding, Report, Severity
@@ -173,6 +175,31 @@ def list_scans(
         offset=offset,
         items=[_summary(db, s) for s in scans],
     )
+
+
+@router.get("/trend", response_model=TrendResponse, dependencies=[Depends(require_api_key)])
+def target_trend(
+    target: str = Query(..., description="Exact target string as scanned, e.g. https://example.com"),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> TrendResponse:
+    """Findings-over-time for one target: severity counts for every completed
+    scan of it, oldest first, so a client can plot a trend line. Registered
+    before /{scan_id} so 'trend' is never swallowed as a scan id."""
+    scans = db.scalars(
+        select(ScanRow)
+        .where(ScanRow.target == target, ScanRow.status == ScanStatus.COMPLETED)
+        .order_by(ScanRow.created_at.asc())
+        .limit(limit)
+    ).all()
+    points = []
+    for scan in scans:
+        counts = _severity_counts(db, scan.id)
+        points.append(TrendPoint(
+            scan_id=scan.id, created_at=scan.created_at, severity_counts=counts,
+            findings_count=sum(counts.model_dump().values()),
+        ))
+    return TrendResponse(target=target, points=points)
 
 
 @router.get("/{scan_id}", response_model=ScanDetail, dependencies=[Depends(require_api_key)])

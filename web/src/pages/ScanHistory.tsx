@@ -63,7 +63,12 @@ export function ScanHistory() {
                   >
                     {scan.target}
                   </Link>
-                  <div className="mt-0.5 text-xs text-[#9691ac]">{scan.modules.join(", ")}</div>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-[#9691ac]">
+                    <span>{scan.modules.join(", ")}</span>
+                    <Link to={`/trend?target=${encodeURIComponent(scan.target)}`} className="text-violetx hover:underline">
+                      Trend
+                    </Link>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-[#635d80]">{new Date(scan.created_at).toLocaleString()}</td>
                 <td className="px-4 py-3">

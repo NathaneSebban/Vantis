@@ -6,6 +6,7 @@ import { Landing } from "./pages/Landing";
 import { ScanLive } from "./pages/ScanLive";
 import { ScanReport } from "./pages/ScanReport";
 import { ScanHistory } from "./pages/ScanHistory";
+import { Trend } from "./pages/Trend";
 
 function Nav() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -27,6 +28,9 @@ function Nav() {
           <NavLink to="/history" className={linkClass}>
             History
           </NavLink>
+          <NavLink to="/trend" className={linkClass}>
+            Trend
+          </NavLink>
         </nav>
       </div>
     </header>
@@ -42,6 +46,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/history" element={<ScanHistory />} />
+          <Route path="/trend" element={<Trend />} />
           <Route path="/new" element={<Navigate to="/" replace />} />
           <Route path="/scans/:id" element={<ScanLive />} />
           <Route path="/scans/:id/report" element={<ScanReport />} />

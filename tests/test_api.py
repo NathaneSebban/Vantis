@@ -171,6 +171,26 @@ def test_full_scan_flow(client):
     assert any(item["scan_id"] == scan_id for item in listing["items"])
 
 
+def test_target_trend_returns_completed_scans_oldest_first(client):
+    target = "https://trend-example.com"
+    ids = []
+    for _ in range(2):
+        r = client.post("/api/scans", json={"target": target, "authorized": True, "modules": ["web"]})
+        scan_id = r.json()["scan_id"]
+        _wait_for_status(client, scan_id, {"completed"})
+        ids.append(scan_id)
+
+    trend = client.get(f"/api/scans/trend?target={target}").json()
+    assert trend["target"] == target
+    assert [p["scan_id"] for p in trend["points"]] == ids  # oldest first
+    assert all(p["findings_count"] == 2 for p in trend["points"])
+
+
+def test_target_trend_empty_for_unknown_target(client):
+    trend = client.get("/api/scans/trend?target=https://never-scanned.example").json()
+    assert trend["points"] == []
+
+
 def test_delete_completed_scan_removes_history(client):
     r = client.post("/api/scans", json={"target": "https://example.com", "authorized": True, "modules": ["web"]})
     scan_id = r.json()["scan_id"]

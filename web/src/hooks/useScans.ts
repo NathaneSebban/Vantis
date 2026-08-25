@@ -54,6 +54,14 @@ export function useCreateScan() {
   });
 }
 
+export function useTrend(target: string | undefined) {
+  return useQuery({
+    queryKey: ["trend", target],
+    queryFn: () => api.getTrend(target!),
+    enabled: !!target,
+  });
+}
+
 export function useDeleteScan() {
   const qc = useQueryClient();
   return useMutation({

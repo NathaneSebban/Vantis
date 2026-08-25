@@ -193,6 +193,21 @@ cd web && npm test
 
 API tests use a fake engine: **no network traffic is emitted** during the test suite. The `AuthorizationGate` test explicitly verifies that the launch button stays disabled until the authorization box is checked.
 
+## CI/CD — GitHub Action
+
+Vantis ships a composite GitHub Action (`action.yml` at the repo root) that runs a scan and uploads the results as SARIF to GitHub code scanning:
+
+```yaml
+- name: Run Vantis
+  uses: NathaneSebban/Vantis@main
+  with:
+    target: https://staging.example.com   # must be a target you are authorized to scan
+    modules: recon,web,cve
+    fail-on-severity: high                # fail the job on high/critical findings; "none" to never fail
+```
+
+`.github/workflows/vantis-scan-example.yml` in this repo is a ready-to-copy example. It is deliberately **`workflow_dispatch`-only** (never runs on push/PR/schedule) and requires typing `authorized: yes` when triggering it — Vantis actively probes whatever target it's given, so a CI workflow must never fire automatically against a target nobody explicitly confirmed.
+
 ## Writing a new module
 
 Just add a class under `vantis/modules/<category>/` that inherits from `ScanModule`:

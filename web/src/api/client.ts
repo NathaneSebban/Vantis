@@ -13,6 +13,7 @@ import type {
   ScanDetail,
   ScanListResponse,
   Severity,
+  TrendResponse,
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
@@ -77,6 +78,10 @@ export const api = {
 
   deleteScan(id: string): Promise<{ scan_id: string; action: string }> {
     return request(`/api/scans/${id}`, { method: "DELETE" });
+  },
+
+  getTrend(target: string): Promise<TrendResponse> {
+    return request(`/api/scans/trend?target=${encodeURIComponent(target)}`);
   },
 
   reportUrl(id: string, format: "json" | "html" | "md" | "pdf" | "sarif"): string {

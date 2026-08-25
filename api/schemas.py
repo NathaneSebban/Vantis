@@ -193,6 +193,22 @@ class ScanDetail(ScanSummary):
     error: str = ""
 
 
+class TrendPoint(BaseModel):
+    scan_id: str
+    created_at: datetime
+    severity_counts: SeverityCounts
+    findings_count: int
+
+    @field_serializer("created_at")
+    def _ser_created_at(self, v: datetime) -> datetime:
+        return _as_utc(v)
+
+
+class TrendResponse(BaseModel):
+    target: str
+    points: list[TrendPoint]
+
+
 class ScanListResponse(BaseModel):
     total: int
     limit: int
