@@ -85,6 +85,8 @@ class ScanManager:
         modules: list[str],
         auth_headers: dict | None = None,
         auth_cookies: dict | None = None,
+        secondary_auth_headers: dict | None = None,
+        secondary_auth_cookies: dict | None = None,
         enabled_modules: list[str] | None = None,
         browser_crawl: bool = False,
     ) -> None:
@@ -93,9 +95,14 @@ class ScanManager:
         with self._lock:
             self._cancel_flags[scan_id] = threading.Event()
         # auth_* are passed as call arguments only — they live in-memory for the
-        # duration of the run and are never persisted.
-        self._executor.submit(self._run_job, scan_id, target, scope, modules,
-                              auth_headers, auth_cookies, enabled_modules, browser_crawl)
+        # duration of the run and are never persisted. Passed as kwargs (not
+        # stacked positionals) so this stays safe to extend.
+        self._executor.submit(
+            self._run_job, scan_id=scan_id, target=target, scope=scope, modules=modules,
+            auth_headers=auth_headers, auth_cookies=auth_cookies,
+            secondary_auth_headers=secondary_auth_headers, secondary_auth_cookies=secondary_auth_cookies,
+            enabled_modules=enabled_modules, browser_crawl=browser_crawl,
+        )
 
     def request_cancel(self, scan_id: str) -> bool:
         """Signal a running job to stop at the next module boundary.
@@ -152,6 +159,8 @@ class ScanManager:
         modules: list[str],
         auth_headers: dict | None = None,
         auth_cookies: dict | None = None,
+        secondary_auth_headers: dict | None = None,
+        secondary_auth_cookies: dict | None = None,
         enabled_modules: list[str] | None = None,
         browser_crawl: bool = False,
     ) -> None:
@@ -225,6 +234,8 @@ class ScanManager:
                 rate_limit_delay=settings.rate_limit_delay,
                 auth_headers=auth_headers or None,
                 auth_cookies=auth_cookies or None,
+                secondary_auth_headers=secondary_auth_headers or None,
+                secondary_auth_cookies=secondary_auth_cookies or None,
                 max_workers=settings.scan_workers,
                 enabled_modules=enabled_modules or None,
                 browser_crawl=browser_crawl,

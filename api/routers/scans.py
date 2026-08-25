@@ -103,6 +103,8 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
     scan_manager.submit(
         scan_id, payload.target, payload.scope, payload.modules,
         auth_headers=payload.headers or None, auth_cookies=payload.cookies or None,
+        secondary_auth_headers=payload.secondary_headers or None,
+        secondary_auth_cookies=payload.secondary_cookies or None,
         enabled_modules=payload.module_names or None,
         browser_crawl=payload.browser_crawl,
     )

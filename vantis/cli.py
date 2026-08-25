@@ -39,6 +39,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--cookie", "-C", action="append", default=[], metavar="'name=value'",
         help="Session cookie for authenticated scanning (repeatable), e.g. -C 'session=abc123'",
     )
+    parser.add_argument(
+        "--secondary-header", action="append", default=[], metavar="'Name: value'",
+        help="Header for a SECOND authenticated identity (repeatable). Enables IDOR testing (idor-check "
+             "compares what this identity can access against the primary identity's resources).",
+    )
+    parser.add_argument(
+        "--secondary-cookie", action="append", default=[], metavar="'name=value'",
+        help="Cookie for a SECOND authenticated identity (repeatable). See --secondary-header.",
+    )
     parser.add_argument("--workers", type=int, default=1,
                         help="Concurrent workers for web/cve modules (default 1 = sequential). Higher is faster.")
     parser.add_argument(
@@ -74,20 +83,20 @@ def main(argv: list[str] | None = None) -> int:
 
     categories = [c.strip() for c in args.modules.split(",") if c.strip()]
 
-    auth_headers = {}
-    for h in args.header:
-        if ":" in h:
-            k, v = h.split(":", 1)
-            auth_headers[k.strip()] = v.strip()
-        else:
-            print(f"[!] Ignoring malformed header (expected 'Name: value'): {h}")
-    auth_cookies = {}
-    for c in args.cookie:
-        if "=" in c:
-            k, v = c.split("=", 1)
-            auth_cookies[k.strip()] = v.strip()
-        else:
-            print(f"[!] Ignoring malformed cookie (expected 'name=value'): {c}")
+    def _parse_pairs(items: list[str], sep: str, kind: str) -> dict:
+        out = {}
+        for item in items:
+            if sep in item:
+                k, v = item.split(sep, 1)
+                out[k.strip()] = v.strip()
+            else:
+                print(f"[!] Ignoring malformed {kind} (expected '{'Name: value' if sep == ':' else 'name=value'}'): {item}")
+        return out
+
+    auth_headers = _parse_pairs(args.header, ":", "header")
+    auth_cookies = _parse_pairs(args.cookie, "=", "cookie")
+    secondary_auth_headers = _parse_pairs(args.secondary_header, ":", "secondary header")
+    secondary_auth_cookies = _parse_pairs(args.secondary_cookie, "=", "secondary cookie")
 
     engine = Engine(
         target=target,
@@ -97,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
         rate_limit_delay=args.delay,
         auth_headers=auth_headers or None,
         auth_cookies=auth_cookies or None,
+        secondary_auth_headers=secondary_auth_headers or None,
+        secondary_auth_cookies=secondary_auth_cookies or None,
         max_workers=args.workers,
         browser_crawl=args.browser_crawl,
     )

@@ -26,6 +26,12 @@ class ModuleContext:
     # new_http_client(), so all modules test the target as a logged-in user.
     auth_headers: dict | None = None
     auth_cookies: dict | None = None
+    # A second, lower/different-privilege identity. Only used by modules that
+    # need two identities to detect a bug class (e.g. IDOR: does user B's
+    # session reach user A's resource?). None means that class of check is
+    # skipped — it requires the operator to supply a real second test account.
+    secondary_auth_headers: dict | None = None
+    secondary_auth_cookies: dict | None = None
     # Headless-browser crawling (Playwright): renders the target so injection
     # discovery sees JS-rendered links/forms and real XHR/fetch API calls.
     # Off by default (slower, extra dependency); modules pass this through to
@@ -43,6 +49,21 @@ class ModuleContext:
             delay=self.rate_limit_delay,
             headers=self.auth_headers,
             cookies=self.auth_cookies,
+        )
+
+    def has_secondary_identity(self) -> bool:
+        return bool(self.secondary_auth_headers or self.secondary_auth_cookies)
+
+    def new_secondary_http_client(self):
+        """Build an HTTP client authenticated as the second test identity.
+        Only meaningful when has_secondary_identity() is True."""
+        from vantis.utils.http_client import HttpClient
+
+        return HttpClient(
+            timeout=self.http_timeout,
+            delay=self.rate_limit_delay,
+            headers=self.secondary_auth_headers,
+            cookies=self.secondary_auth_cookies,
         )
 
 

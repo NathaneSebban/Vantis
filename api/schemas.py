@@ -59,6 +59,10 @@ class ScanCreate(BaseModel):
     # NEVER written to the database (they are credentials).
     headers: dict[str, str] = Field(default_factory=dict, description="Extra request headers (e.g. Authorization)")
     cookies: dict[str, str] = Field(default_factory=dict, description="Session cookies")
+    # A second authenticated identity, for IDOR testing (idor-check compares
+    # what this identity can access against the primary identity's resources).
+    secondary_headers: dict[str, str] = Field(default_factory=dict)
+    secondary_cookies: dict[str, str] = Field(default_factory=dict)
     authorized: bool = Field(
         ...,
         description=(
