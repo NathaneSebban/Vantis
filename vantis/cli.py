@@ -48,6 +48,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--secondary-cookie", action="append", default=[], metavar="'name=value'",
         help="Cookie for a SECOND authenticated identity (repeatable). See --secondary-header.",
     )
+    parser.add_argument(
+        "--login-url", metavar="URL",
+        help="URL of the target's own login page. Combined with --login-username/--login-password, Vantis "
+             "submits that form itself and uses the resulting session cookies for the whole scan, instead of "
+             "requiring you to already have a session cookie.",
+    )
+    parser.add_argument("--login-username", metavar="USER", help="Username/email to submit at --login-url")
+    parser.add_argument("--login-password", metavar="PASS", help="Password to submit at --login-url")
     parser.add_argument("--workers", type=int, default=1,
                         help="Concurrent workers for web/cve modules (default 1 = sequential). Higher is faster.")
     parser.add_argument(
@@ -110,6 +118,9 @@ def main(argv: list[str] | None = None) -> int:
         secondary_auth_cookies=secondary_auth_cookies or None,
         max_workers=args.workers,
         browser_crawl=args.browser_crawl,
+        login_url=args.login_url,
+        login_username=args.login_username,
+        login_password=args.login_password,
     )
     report = engine.run()
 

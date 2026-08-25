@@ -63,6 +63,12 @@ class ScanCreate(BaseModel):
     # what this identity can access against the primary identity's resources).
     secondary_headers: dict[str, str] = Field(default_factory=dict)
     secondary_cookies: dict[str, str] = Field(default_factory=dict)
+    # Automated form-based login: instead of already having a session cookie,
+    # Vantis submits the target's own login form itself with these credentials
+    # and uses the resulting cookies. In-memory only, never persisted.
+    login_url: str | None = Field(default=None, description="URL of the target's own login page")
+    login_username: str | None = Field(default=None, description="Username/email to submit at login_url")
+    login_password: str | None = Field(default=None, description="Password to submit at login_url")
     authorized: bool = Field(
         ...,
         description=(

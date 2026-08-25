@@ -74,6 +74,9 @@ class Engine:
         max_workers: int = 1,
         enabled_modules: list[str] | None = None,
         browser_crawl: bool = False,
+        login_url: str | None = None,
+        login_username: str | None = None,
+        login_password: str | None = None,
     ):
         self.target = target
         # When specific module names are requested, discover across all
@@ -82,6 +85,22 @@ class Engine:
         self.categories = ["recon", "web", "cve"] if self.enabled_modules else (categories or ["recon", "web", "cve"])
         self.verbose = verbose
         self.max_workers = max_workers
+
+        # Automated form-based login: if a login URL + credentials were
+        # supplied, submit the target's own login form up front and use the
+        # resulting session cookies as this scan's authentication, in
+        # addition to (never overwriting) any explicitly-provided
+        # auth_headers/auth_cookies.
+        if login_url and login_username and login_password:
+            from vantis.utils.auth_login import perform_login
+            from vantis.utils.http_client import HttpClient
+
+            login_client = HttpClient(timeout=http_timeout, delay=rate_limit_delay, headers=auth_headers)
+            log = (lambda m: print(f"[login] {m}")) if verbose else (lambda _m: None)
+            cookies = perform_login(login_client, login_url, login_username, login_password, log=log)
+            if cookies:
+                auth_cookies = {**cookies, **(auth_cookies or {})}
+
         self.ctx = ModuleContext(
             target=target,
             http_timeout=http_timeout,

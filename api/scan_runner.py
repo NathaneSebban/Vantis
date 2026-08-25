@@ -92,19 +92,23 @@ class ScanManager:
         secondary_auth_cookies: dict | None = None,
         enabled_modules: list[str] | None = None,
         browser_crawl: bool = False,
+        login_url: str | None = None,
+        login_username: str | None = None,
+        login_password: str | None = None,
     ) -> None:
         if self._executor is None:
             raise RuntimeError("ScanManager not started: bind_loop() was never called")
         with self._lock:
             self._cancel_flags[scan_id] = threading.Event()
-        # auth_* are passed as call arguments only — they live in-memory for the
-        # duration of the run and are never persisted. Passed as kwargs (not
-        # stacked positionals) so this stays safe to extend.
+        # auth_*/login_* are passed as call arguments only — they live in-memory
+        # for the duration of the run and are never persisted. Passed as kwargs
+        # (not stacked positionals) so this stays safe to extend.
         self._executor.submit(
             self._run_job, scan_id=scan_id, target=target, scope=scope, modules=modules,
             auth_headers=auth_headers, auth_cookies=auth_cookies,
             secondary_auth_headers=secondary_auth_headers, secondary_auth_cookies=secondary_auth_cookies,
             enabled_modules=enabled_modules, browser_crawl=browser_crawl,
+            login_url=login_url, login_username=login_username, login_password=login_password,
         )
 
     def request_cancel(self, scan_id: str) -> bool:
@@ -166,6 +170,9 @@ class ScanManager:
         secondary_auth_cookies: dict | None = None,
         enabled_modules: list[str] | None = None,
         browser_crawl: bool = False,
+        login_url: str | None = None,
+        login_username: str | None = None,
+        login_password: str | None = None,
     ) -> None:
         settings = get_settings()
         db = SessionLocal()
@@ -242,6 +249,9 @@ class ScanManager:
                 max_workers=settings.scan_workers,
                 enabled_modules=enabled_modules or None,
                 browser_crawl=browser_crawl,
+                login_url=login_url,
+                login_username=login_username,
+                login_password=login_password,
             )
             engine.run(progress_callback=progress)
 

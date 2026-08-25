@@ -28,7 +28,8 @@ class FakeEngine:
     def __init__(self, target, categories=None, http_timeout=10.0, rate_limit_delay=0.3,
                  verbose=False, auth_headers=None, auth_cookies=None,
                  secondary_auth_headers=None, secondary_auth_cookies=None, max_workers=1,
-                 enabled_modules=None, browser_crawl=False):
+                 enabled_modules=None, browser_crawl=False, login_url=None,
+                 login_username=None, login_password=None):
         self.target = target
         self.categories = categories or []
 
