@@ -157,6 +157,19 @@ def discover_injection_points(
         for param in parse_qs(urlparse(u).query):
             add(u, param, "sitemap")
 
+    # 2b) OpenAPI/Swagger spec, if exposed: exact, complete knowledge of every
+    # endpoint/parameter beats guessing from crawled HTML. Highest-value
+    # source when present, so it's always attempted (a couple of cheap GETs).
+    try:
+        from vantis.utils.openapi_crawler import discover_openapi, openapi_injection_points
+
+        spec, spec_url = discover_openapi(client, target, log)
+        if spec is not None:
+            for p in openapi_injection_points(spec, target.base_url):
+                add(p.url, p.param, p.source)
+    except Exception as e:  # noqa: BLE001 - discovery must never break a scan
+        log(f"OpenAPI discovery error: {e}")
+
     # 3) bounded BFS over same-scope HTML pages, starting at the landing page
     queue: list[str] = [target.url]
     visited: set[str] = set()
