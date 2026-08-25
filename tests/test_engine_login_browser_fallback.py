@@ -34,12 +34,32 @@ setTimeout(() => {
 </body></html>"""
 
 
+# A cookie-less SPA: the token lives only in localStorage, mirroring apps
+# like cyberxtel that use a JWT access token instead of a session cookie.
+SPA_JWT_HTML = b"""<!doctype html><html><body>
+<form>
+  <input type="email" name="email">
+  <input type="password" name="password">
+  <button type="submit">Log in</button>
+</form>
+<script>
+  document.querySelector('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    localStorage.setItem('auth-storage', JSON.stringify({
+      state: {accessToken: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.ccccccccccccccccccccccc',
+              isAuthenticated: true},
+    }));
+  });
+</script>
+</body></html>"""
+
+
 class _Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
-        self.wfile.write(SPA_LOGIN_HTML)
+        self.wfile.write(SPA_JWT_HTML if self.path == "/jwt" else SPA_LOGIN_HTML)
 
     def do_POST(self):
         self.send_response(200)
@@ -84,3 +104,24 @@ def test_falls_back_to_browser_login_when_html_form_not_found(spa_server):
 
     # The obtained cookie is actually usable by modules afterwards.
     assert eng.ctx.auth_cookies == {"session": "spa-cookie"}
+
+
+@pytest.mark.skipif(not browser_crawl_available(), reason="playwright not installed")
+def test_falls_back_to_bearer_token_when_spa_uses_jwt_in_storage(spa_server):
+    eng = Engine(
+        target=Target(spa_server), categories=["web"], max_workers=1,
+        login_url=spa_server + "/jwt", login_username="user@test.com", login_password="hunter2",
+    )
+    eng._modules = [_NoOpModule]
+    report = eng.run()
+
+    login_findings = [f for f in report.findings if f.module == "auth-login"]
+    assert len(login_findings) == 1
+    f = login_findings[0]
+    assert "succeeded" in f.title.lower()
+    assert "bearer" in f.description.lower()
+
+    # The token is usable by modules afterwards, as a standard Authorization header.
+    assert eng.ctx.auth_headers == {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.ccccccccccccccccccccccc"
+    }

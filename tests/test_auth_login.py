@@ -1,7 +1,7 @@
 """Tests for automated form-based login."""
 import responses
 
-from vantis.utils.auth_login import parse_login_form, perform_login
+from vantis.utils.auth_login import find_bearer_token, parse_login_form, perform_login
 from vantis.utils.http_client import HttpClient
 
 LOGIN_PAGE = """
@@ -70,3 +70,43 @@ def test_perform_login_returns_none_when_no_cookie_set():
     responses.add(responses.POST, "http://example.com/do-login", body="invalid credentials", status=200)
     client = HttpClient(delay=0)
     assert perform_login(client, "http://example.com/login", "alice@example.com", "wrong") is None
+
+
+# -- find_bearer_token (JWT-in-storage extraction) ----------------------
+
+_ACCESS_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.aaaaaaaaaaaaaaaaaaaaaaaa"
+_REFRESH_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.bbbbbbbbbbbbbbbbbbbbbbbb"
+
+
+def test_find_bearer_token_none_when_storage_empty():
+    assert find_bearer_token({}) is None
+    assert find_bearer_token(None) is None
+
+
+def test_find_bearer_token_top_level_key():
+    assert find_bearer_token({"accessToken": _ACCESS_JWT}) == _ACCESS_JWT
+
+
+def test_find_bearer_token_ignores_non_jwt_strings():
+    assert find_bearer_token({"theme": "dark", "cartId": "not-a-jwt"}) is None
+
+
+def test_find_bearer_token_prefers_access_over_refresh():
+    storage = {"accessToken": _ACCESS_JWT, "refreshToken": _REFRESH_JWT}
+    assert find_bearer_token(storage) == _ACCESS_JWT
+    # Order shouldn't matter.
+    storage2 = {"refreshToken": _REFRESH_JWT, "accessToken": _ACCESS_JWT}
+    assert find_bearer_token(storage2) == _ACCESS_JWT
+
+
+def test_find_bearer_token_finds_jwt_nested_in_json_serialized_store():
+    # Mirrors a real persisted Zustand/Redux auth slice: the whole state is
+    # JSON-serialized as the value of one localStorage key.
+    nested = {
+        "auth-storage": (
+            '{"state":{"user":{"id":"1"},'
+            f'"accessToken":"{_ACCESS_JWT}","refreshToken":"{_REFRESH_JWT}",'
+            '"isAuthenticated":true},"version":0}'
+        )
+    }
+    assert find_bearer_token(nested) == _ACCESS_JWT

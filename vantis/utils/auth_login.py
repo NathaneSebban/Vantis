@@ -14,6 +14,7 @@ never guesses credentials or attempts more than the one submission asked for.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from urllib.parse import urljoin
@@ -130,3 +131,69 @@ def perform_login(client, login_url: str, username: str, password: str, log=None
 
     log(f"login succeeded, {len(cookies)} cookie(s) obtained")
     return cookies
+
+
+# -- Token-based (JWT-in-storage) auth ---------------------------------
+#
+# Many modern SPAs don't use a session cookie at all: after login, the app
+# stores a JWT access token in localStorage/sessionStorage (often nested
+# inside a JSON-serialized state store, e.g. a persisted Zustand/Redux
+# slice) and attaches it as an `Authorization: Bearer <token>` header on
+# every API call instead. A browser-driven login (browser_crawler.py) can
+# read that storage after submitting the form; this is the pure logic that
+# finds the right token in whatever shape it's stored in, shared so it isn't
+# duplicated between that module and any future one that needs it.
+
+_JWT_RE = re.compile(r"^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$")
+
+
+def _collect_jwt_candidates(value, path: str, out: list[tuple[str, str]]) -> None:
+    if isinstance(value, str):
+        if _JWT_RE.match(value):
+            out.append((path, value))
+            return
+        # Storage frameworks often serialize their whole state as a JSON
+        # string under one key (e.g. localStorage["auth-storage"]) — look
+        # inside it too.
+        try:
+            parsed = json.loads(value)
+        except (ValueError, TypeError):
+            return
+        _collect_jwt_candidates(parsed, path, out)
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            _collect_jwt_candidates(v, f"{path}.{k}", out)
+    elif isinstance(value, list):
+        for i, v in enumerate(value):
+            _collect_jwt_candidates(v, f"{path}[{i}]", out)
+
+
+def _score_key_path(path: str) -> int:
+    p = path.lower()
+    score = 0
+    if "refresh" in p:
+        score -= 10  # a refresh token isn't meant to be sent as a Bearer header
+    if "access" in p:
+        score += 5
+    if "token" in p or "jwt" in p or "auth" in p:
+        score += 1
+    return score
+
+
+def find_bearer_token(storage: dict) -> str | None:
+    """Pure: search a flat localStorage/sessionStorage snapshot (string keys
+    to string values, as JS's Storage API always is — some values may
+    themselves be JSON-serialized nested objects) for a JWT-shaped access
+    token. When multiple JWTs are present (e.g. both an access and a refresh
+    token), prefers the one whose key path looks like an access token and
+    actively avoids one that looks like a refresh token.
+
+    Returns None if nothing JWT-shaped is found. Unit-tested independent of
+    any browser — this never touches the network or a page."""
+    candidates: list[tuple[str, str]] = []
+    for key, value in (storage or {}).items():
+        _collect_jwt_candidates(value, key, candidates)
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: _score_key_path(c[0]), reverse=True)
+    return candidates[0][1]

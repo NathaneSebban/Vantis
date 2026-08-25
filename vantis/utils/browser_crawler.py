@@ -21,9 +21,11 @@ beyond the initial page load, so it never causes a state change on the target.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urljoin, urlparse
 
+from vantis.utils.auth_login import find_bearer_token
 from vantis.utils.crawler import InjectionPoint
 
 
@@ -136,8 +138,19 @@ def browser_crawl(target, timeout_ms: int = 15000, max_points: int = 40) -> list
 _USERNAME_HINTS = ("user", "email", "login", "identifiant", "account")
 
 
+def _read_storage(page, kind: str) -> dict[str, str]:
+    """Snapshot a page's localStorage or sessionStorage as a flat dict.
+    Best-effort: returns {} if the page blocks storage access or the read
+    otherwise fails, rather than raising."""
+    try:
+        raw = page.evaluate(f"() => JSON.stringify({kind})")
+        return json.loads(raw) if raw else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def browser_login(login_url: str, username: str, password: str,
-                   timeout_ms: int = 15000, log=None) -> dict[str, str] | None:
+                   timeout_ms: int = 15000, log=None) -> dict | None:
     """Log in via a real headless browser instead of parsing raw HTML.
 
     Fallback for JS-rendered (SPA) login forms: `auth_login.perform_login()`
@@ -146,11 +159,20 @@ def browser_login(login_url: str, username: str, password: str,
     the DOM after client-side JS renders it. This waits for that render, then
     interacts with the page like a real user: fill the password field (and
     whichever field looks like the username), submit, and read back the
-    resulting cookies.
+    result.
+
+    Many modern SPAs don't set a session cookie at all — they store a JWT
+    access token in localStorage/sessionStorage and send it as an
+    `Authorization: Bearer` header instead. So after submitting, this checks
+    BOTH: cookies that changed, and localStorage/sessionStorage keys that
+    changed and contain a JWT-shaped token (see auth_login.find_bearer_token).
 
     Returns None on any failure (Playwright unavailable, no password field
-    found even after rendering, submission didn't yield a new/changed
-    cookie) — never raises, matching every other best-effort helper here."""
+    found even after rendering, submission yielded neither a new cookie nor a
+    token) — never raises, matching every other best-effort helper here.
+    On success, returns {"cookies": {...}, "bearer_token": str | None} —
+    exactly one of the two is populated (a site uses one scheme or the
+    other, not both)."""
     log = log or (lambda _m: None)
     if not browser_crawl_available():
         log("headless browser unavailable (install: pip install vantis[browser] && playwright install chromium)")
@@ -167,6 +189,8 @@ def browser_login(login_url: str, username: str, password: str,
                 page.goto(login_url, timeout=timeout_ms, wait_until="domcontentloaded")
 
                 before = {c["name"]: c["value"] for c in context.cookies()}
+                before_ls = _read_storage(page, "localStorage")
+                before_ss = _read_storage(page, "sessionStorage")
 
                 # Wait for the password field to actually appear in the DOM —
                 # SPA login forms are often rendered after an async fetch of
@@ -209,14 +233,28 @@ def browser_login(login_url: str, username: str, password: str,
                 page.wait_for_load_state("networkidle", timeout=timeout_ms)
 
                 after = {c["name"]: c["value"] for c in context.cookies()}
-                changed = {k: v for k, v in after.items() if before.get(k) != v}
-                if not changed:
-                    log("login submitted via headless browser but no session cookie changed — "
-                        "credentials may be wrong")
-                    return None
+                changed_cookies = {k: v for k, v in after.items() if before.get(k) != v}
+                if changed_cookies:
+                    log(f"headless-browser login succeeded, {len(changed_cookies)} cookie(s) obtained")
+                    return {"cookies": changed_cookies, "bearer_token": None}
 
-                log(f"headless-browser login succeeded, {len(changed)} cookie(s) obtained")
-                return changed
+                # No cookie appeared — check storage for a JWT the app stored
+                # instead (the common SPA pattern: token-based auth, no
+                # session cookie at all).
+                after_ls = _read_storage(page, "localStorage")
+                after_ss = _read_storage(page, "sessionStorage")
+                changed_storage = {
+                    **{k: v for k, v in after_ls.items() if before_ls.get(k) != v},
+                    **{k: v for k, v in after_ss.items() if before_ss.get(k) != v},
+                }
+                token = find_bearer_token(changed_storage)
+                if token:
+                    log("headless-browser login succeeded, obtained a bearer token from storage")
+                    return {"cookies": {}, "bearer_token": token}
+
+                log("login submitted via headless browser but no session cookie or token changed — "
+                    "credentials may be wrong")
+                return None
             finally:
                 browser.close()
     except Exception as e:  # noqa: BLE001 - best-effort; never break a scan over this

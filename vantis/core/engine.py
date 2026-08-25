@@ -115,23 +115,34 @@ class Engine:
 
             cookies = perform_login(login_client, login_url, login_username, login_password, log=_login_log)
             method = "html-form"
+            bearer_token: str | None = None
 
             if not cookies:
                 from vantis.utils.browser_crawler import browser_login
 
-                cookies = browser_login(login_url, login_username, login_password, log=_login_log)
-                if cookies:
+                # Many SPAs use a JWT-in-storage scheme instead of a session
+                # cookie — browser_login() checks both and reports back
+                # whichever one it found.
+                result = browser_login(login_url, login_username, login_password, log=_login_log)
+                if result:
+                    cookies = result.get("cookies") or None
+                    bearer_token = result.get("bearer_token")
                     method = "headless-browser"
 
+            success = bool(cookies) or bool(bearer_token)
             self._login_result = {
-                "success": bool(cookies),
+                "success": success,
                 "cookie_count": len(cookies) if cookies else 0,
+                "has_bearer_token": bool(bearer_token),
                 "reason": login_messages[-1] if login_messages else "",
                 "login_url": login_url,
-                "method": method if cookies else None,
+                "method": method if success else None,
             }
             if cookies:
                 auth_cookies = {**cookies, **(auth_cookies or {})}
+            if bearer_token:
+                # An operator-supplied Authorization header (if any) still wins.
+                auth_headers = {"Authorization": f"Bearer {bearer_token}", **(auth_headers or {})}
 
         self.ctx = ModuleContext(
             target=target,
@@ -280,6 +291,10 @@ class Engine:
             if lr["success"]:
                 method_note = ("via its rendered HTML form" if lr["method"] == "html-form"
                                 else "via a headless browser, after its login form only appeared post-render (SPA)")
+                if lr["has_bearer_token"]:
+                    obtained_note = "a bearer access token (from localStorage/sessionStorage — no session cookie)"
+                else:
+                    obtained_note = f"{lr['cookie_count']} session cookie(s)"
                 login_finding = Finding(
                     module="auth-login", confidence=Confidence.HIGH,
                     title="Automated login succeeded",
@@ -287,7 +302,7 @@ class Engine:
                     target=str(self.target),
                     matched_at=lr["login_url"],
                     description=f"Vantis logged in {method_note} at {lr['login_url']} and obtained "
-                                f"{lr['cookie_count']} session cookie(s); every module below ran authenticated.",
+                                f"{obtained_note}; every module below ran authenticated.",
                 )
             else:
                 login_finding = Finding(

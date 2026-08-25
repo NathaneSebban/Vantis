@@ -50,6 +50,28 @@ SPA_REJECT_HTML = b"""<!doctype html><html><body>
 # No password field ever appears — a page that isn't a login page at all.
 NO_FORM_HTML = b"<!doctype html><html><body><div id='app'>Nothing here</div></body></html>"
 
+# Mirrors the real-world pattern this was built for: no cookie at all, a JWT
+# access token nested inside a JSON-serialized store under one localStorage
+# key, alongside a refresh token that must NOT be picked instead.
+SPA_JWT_HTML = b"""<!doctype html><html><body>
+<form>
+  <input type="email" name="email">
+  <input type="password" name="password">
+  <button type="submit">Log in</button>
+</form>
+<script>
+  document.querySelector('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const jwtAccess = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.aaaaaaaaaaaaaaaaaaaaaaaa';
+    const jwtRefresh = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.bbbbbbbbbbbbbbbbbbbbbbbb';
+    localStorage.setItem('auth-storage', JSON.stringify({
+      state: {accessToken: jwtAccess, refreshToken: jwtRefresh, isAuthenticated: true},
+      version: 0,
+    }));
+  });
+</script>
+</body></html>"""
+
 
 class _Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -60,6 +82,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             "/": SPA_LOGIN_HTML,
             "/reject": SPA_REJECT_HTML,
             "/noform": NO_FORM_HTML,
+            "/jwt": SPA_JWT_HTML,
         }.get(self.path, b"")
         self.wfile.write(body)
 
@@ -83,8 +106,17 @@ def local_server():
 
 @pytest.mark.skipif(not browser_crawl_available(), reason="playwright not installed")
 def test_browser_login_waits_for_spa_form_and_succeeds(local_server):
-    cookies = browser_login(local_server + "/", "user@test.com", "hunter2", timeout_ms=10000)
-    assert cookies == {"session": "abc123"}
+    result = browser_login(local_server + "/", "user@test.com", "hunter2", timeout_ms=10000)
+    assert result == {"cookies": {"session": "abc123"}, "bearer_token": None}
+
+
+@pytest.mark.skipif(not browser_crawl_available(), reason="playwright not installed")
+def test_browser_login_extracts_access_token_from_localstorage_over_refresh(local_server):
+    result = browser_login(local_server + "/jwt", "user@test.com", "hunter2", timeout_ms=10000)
+    assert result["cookies"] == {}
+    assert result["bearer_token"] == (
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.aaaaaaaaaaaaaaaaaaaaaaaa"
+    )
 
 
 @pytest.mark.skipif(not browser_crawl_available(), reason="playwright not installed")
