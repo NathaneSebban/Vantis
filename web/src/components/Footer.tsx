@@ -25,7 +25,7 @@ export function Footer() {
           <div className="lg:col-span-1">
             <img src={wordmark} alt="Vantis" className="h-5 object-contain" />
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-[#635d80]">
-              Modular vulnerability scanner — recon, web and CVE detection.
+              Modular vulnerability scanner for recon, web and CVE detection.
             </p>
             <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violetx/20 bg-violetx-soft px-2.5 py-1 text-[11px] font-semibold text-violetx">
               ● Free &amp; open-source
@@ -45,7 +45,7 @@ export function Footer() {
 
           <Col title="Use responsibly">
             <li className="text-sm leading-relaxed text-[#635d80]">
-              For <strong className="text-violetx-ink">authorized</strong> security testing only —
+              For <strong className="text-violetx-ink">authorized</strong> security testing only:
               bug bounty scope, signed pentest, or your own assets.
             </li>
           </Col>

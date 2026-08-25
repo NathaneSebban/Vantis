@@ -81,7 +81,7 @@ export function ScanHistory() {
                         {scan.severity_counts[s]}
                       </span>
                     ))}
-                    {scan.findings_count === 0 && <span className="text-xs text-[#9691ac]">—</span>}
+                    {scan.findings_count === 0 && <span className="text-xs text-[#9691ac]">None</span>}
                   </div>
                 </td>
                 <td className="px-4 py-3">

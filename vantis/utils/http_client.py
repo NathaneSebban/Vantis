@@ -10,7 +10,7 @@ import time
 
 import requests
 
-DEFAULT_USER_AGENT = "Vantis/0.1 (+authorized-security-testing; contact=YOUR_EMAIL_HERE)"
+DEFAULT_USER_AGENT = "Vantis/0.1 (+authorized-security-testing; contact=vantis@cyberxtel.com)"
 
 
 class HttpClient:

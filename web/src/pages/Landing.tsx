@@ -8,10 +8,10 @@ import { ApiError } from "../api/client";
 
 const FEATURES = [
   { icon: "◎", title: "Injection-point crawler", body: "Links, GET forms, robots/sitemap, bounded BFS and Wayback feed real endpoints to every web module." },
-  { icon: "⛨", title: "Authenticated scanning", body: "Attach session headers or cookies and probe the logged-in surface — where the real bugs live." },
+  { icon: "⛨", title: "Authenticated scanning", body: "Attach session headers or cookies and probe the logged-in surface, where the real bugs live." },
   { icon: "⚡", title: "Live results", body: "Findings stream over WebSockets as modules run, with concurrent web/CVE execution for speed." },
   { icon: "⬡", title: "18 detection modules", body: "Recon, TLS, web injection (XSS/SQLi/SSTI/LFI), CORS, secrets-in-JS, content discovery and CVE templates." },
-  { icon: "⤓", title: "Reports everywhere", body: "Export to JSON, HTML, Markdown, PDF and SARIF — drop findings straight into GitHub code scanning." },
+  { icon: "⤓", title: "Reports everywhere", body: "Export to JSON, HTML, Markdown, PDF and SARIF, and drop findings straight into GitHub code scanning." },
   { icon: "◷", title: "Schedule & alert", body: "Run recurring scans, diff against the last run, and get a webhook when new criticals appear." },
 ];
 
@@ -72,7 +72,7 @@ export function Landing() {
         </div>
 
         <h1 className="mt-6 max-w-2xl animate-reveal text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-violetx-ink [animation-delay:0.15s] sm:text-5xl">
-          Find what attackers find —{" "}
+          Find what attackers find,{" "}
           <span
             className="bg-clip-text text-transparent [background-size:200%_auto] animate-gradient"
             style={{ backgroundImage: "linear-gradient(90deg,#3a2a8c,#6d4fe0,#4c2fbf,#6d4fe0)" }}
@@ -81,7 +81,7 @@ export function Landing() {
           </span>
         </h1>
         <p className="mt-4 max-w-xl animate-reveal text-[15px] leading-relaxed text-[#5b5676] [animation-delay:0.2s]">
-          Vantis is a modular vulnerability scanner for <strong>authorized</strong> security testing — recon,
+          Vantis is a modular vulnerability scanner for <strong>authorized</strong> security testing, combining recon,
           web-app testing and CVE detection in one sweep, with live results and a plugin for every check.
         </p>
 
@@ -104,7 +104,7 @@ export function Landing() {
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && canLaunch && setShowModal(true)}
-                placeholder="https://example.com  —  enter an authorized target"
+                placeholder="https://example.com (an authorized target)"
                 className="w-full bg-transparent py-3.5 text-sm text-violetx-ink outline-none placeholder:text-[#a9a3bd]"
               />
             </div>

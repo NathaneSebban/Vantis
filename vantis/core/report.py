@@ -77,7 +77,7 @@ class Report:
         Path(path).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
     def to_markdown(self, path: str | Path) -> None:
-        lines = [f"# Vantis Report — {self.target}", "", f"Generated: {datetime.now(timezone.utc).isoformat()}", "", f"**Total findings:** {len(self.findings)}", ""]
+        lines = [f"# Vantis Report: {self.target}", "", f"Generated: {datetime.now(timezone.utc).isoformat()}", "", f"**Total findings:** {len(self.findings)}", ""]
         for sev in reversed(list(Severity)):
             group = [f for f in self.findings if f.severity == sev]
             if not group:
@@ -123,7 +123,7 @@ class Report:
         escaped_target = html.escape(self.target)
         html_doc = f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<title>Vantis Report — {escaped_target}</title>
+<title>Vantis Report: {escaped_target}</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, sans-serif; margin: 40px; background:#f8fafc; color:#0f172a;}}
   h1 {{ font-size: 22px; }}
@@ -133,7 +133,7 @@ class Report:
   .meta {{ color:#64748b; margin-bottom: 20px; font-size: 13px;}}
 </style></head>
 <body>
-  <h1>Vantis Report — {escaped_target}</h1>
+  <h1>Vantis Report: {escaped_target}</h1>
   <div class="meta">Generated {datetime.now(timezone.utc).isoformat()} · {len(self.findings)} findings</div>
   <table>
     <tr><th>Severity</th><th>Title</th><th>Module</th><th>Location</th><th>Description</th></tr>
