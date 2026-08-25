@@ -36,6 +36,39 @@ export function Landing() {
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  // Headless-browser crawling (Playwright): renders the target so injection
+  // discovery sees JS-rendered links/forms and real XHR/fetch API calls.
+  const [browserCrawl, setBrowserCrawl] = useState(false);
+
+  // A second, lower-privilege authenticated identity — only used by
+  // idor-check to compare what it can reach against the primary identity's
+  // resources. "Name: value" for headers, "name=value" for cookies.
+  const [secondaryEnabled, setSecondaryEnabled] = useState(false);
+  const [secondaryHeaderInput, setSecondaryHeaderInput] = useState("");
+  const [secondaryHeaders, setSecondaryHeaders] = useState<string[]>([]);
+  const [secondaryCookieInput, setSecondaryCookieInput] = useState("");
+  const [secondaryCookies, setSecondaryCookies] = useState<string[]>([]);
+
+  function addSecondaryHeader() {
+    const v = secondaryHeaderInput.trim();
+    if (v && v.includes(":") && !secondaryHeaders.includes(v)) setSecondaryHeaders([...secondaryHeaders, v]);
+    setSecondaryHeaderInput("");
+  }
+  function addSecondaryCookie() {
+    const v = secondaryCookieInput.trim();
+    if (v && v.includes("=") && !secondaryCookies.includes(v)) setSecondaryCookies([...secondaryCookies, v]);
+    setSecondaryCookieInput("");
+  }
+  function pairsToDict(pairs: string[], sep: string): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const p of pairs) {
+      const i = p.indexOf(sep);
+      if (i === -1) continue;
+      out[p.slice(0, i).trim()] = p.slice(i + 1).trim();
+    }
+    return out;
+  }
+
   const allNames = useMemo(() => new Set(modules.map((m) => m.name)), [modules]);
   const effective = selected ?? allNames;
   const targetValid = target.trim().length > 0;
@@ -57,6 +90,9 @@ export function Landing() {
         login_url: loginEnabled ? loginUrl.trim() || undefined : undefined,
         login_username: loginEnabled ? loginUsername.trim() || undefined : undefined,
         login_password: loginEnabled ? loginPassword || undefined : undefined,
+        browser_crawl: browserCrawl,
+        secondary_headers: secondaryEnabled ? pairsToDict(secondaryHeaders, ":") : undefined,
+        secondary_cookies: secondaryEnabled ? pairsToDict(secondaryCookies, "=") : undefined,
         authorized: true, // guaranteed by the disclaimer modal — the only caller
       });
       navigate(`/scans/${res.scan_id}`);
@@ -203,6 +239,86 @@ export function Landing() {
                       type="password"
                       className="field"
                     />
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 border-t border-[#eae5f8] pt-4">
+                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#8b84a3]">
+                  <input
+                    type="checkbox"
+                    checked={browserCrawl}
+                    onChange={(e) => setBrowserCrawl(e.target.checked)}
+                    className="h-4 w-4 rounded border-[#cfc7e6] text-violetx accent-violetx"
+                  />
+                  Headless browser crawling
+                </label>
+                <p className="mt-1 text-xs text-[#9691ac]">
+                  Renders the target in headless Chromium so injection discovery also sees JS-rendered
+                  links/forms and real XHR/fetch API calls. Slower; off by default.
+                </p>
+              </div>
+
+              <div className="mt-4 border-t border-[#eae5f8] pt-4">
+                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#8b84a3]">
+                  <input
+                    type="checkbox"
+                    checked={secondaryEnabled}
+                    onChange={(e) => setSecondaryEnabled(e.target.checked)}
+                    className="h-4 w-4 rounded border-[#cfc7e6] text-violetx accent-violetx"
+                  />
+                  Second test identity (IDOR detection)
+                </label>
+                <p className="mt-1 text-xs text-[#9691ac]">
+                  Give a session for a second, lower-privilege account and idor-check will compare what it
+                  can reach against the primary identity's resources. Without this, idor-check finds nothing.
+                </p>
+                {secondaryEnabled && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <div className="flex gap-2">
+                        <input
+                          value={secondaryHeaderInput}
+                          onChange={(e) => setSecondaryHeaderInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSecondaryHeader())}
+                          placeholder="Authorization: Bearer <identity B token>"
+                          className="field flex-1"
+                        />
+                        <button type="button" onClick={addSecondaryHeader} className="btn-ghost">Add</button>
+                      </div>
+                      {secondaryHeaders.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {secondaryHeaders.map((h) => (
+                            <span key={h} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-mono text-violetx-deep ring-1 ring-[#e6e1f5]">
+                              {h}
+                              <button onClick={() => setSecondaryHeaders(secondaryHeaders.filter((x) => x !== h))} className="text-[#9691ac] hover:text-violetx-ink">✕</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex gap-2">
+                        <input
+                          value={secondaryCookieInput}
+                          onChange={(e) => setSecondaryCookieInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSecondaryCookie())}
+                          placeholder="session=<identity B cookie>"
+                          className="field flex-1"
+                        />
+                        <button type="button" onClick={addSecondaryCookie} className="btn-ghost">Add</button>
+                      </div>
+                      {secondaryCookies.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {secondaryCookies.map((c) => (
+                            <span key={c} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-mono text-violetx-deep ring-1 ring-[#e6e1f5]">
+                              {c}
+                              <button onClick={() => setSecondaryCookies(secondaryCookies.filter((x) => x !== c))} className="text-[#9691ac] hover:text-violetx-ink">✕</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

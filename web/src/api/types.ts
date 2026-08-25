@@ -89,6 +89,13 @@ export interface ScanCreate {
   login_url?: string;
   login_username?: string;
   login_password?: string;
+  // Render the target in headless Chromium to discover JS-rendered content
+  // and real XHR/fetch API calls.
+  browser_crawl?: boolean;
+  // A second authenticated identity, for IDOR testing (idor-check compares
+  // what this identity can access against the primary identity's resources).
+  secondary_headers?: Record<string, string>;
+  secondary_cookies?: Record<string, string>;
   authorized: boolean;
 }
 
