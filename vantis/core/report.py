@@ -182,10 +182,9 @@ class Report:
             except TypeError:  # older fpdf2 without rounded corners
                 pdf.rect(x, y, w, h, style="F")
 
-        # ---- Header: real logo + wordmark ----
+        # ---- Header: VANTIS wordmark only ----
         try:
-            pdf.image(str(assets / "logo.png"), x=ML, y=12, h=15)
-            pdf.image(str(assets / "wordmark.png"), x=ML + 17, y=16.5, h=6.5)
+            pdf.image(str(assets / "wordmark.png"), x=ML, y=13, h=9)
         except Exception:  # noqa: BLE001 - never fail export over the logo
             pass
         pdf.set_xy(ML, 30)
