@@ -88,6 +88,40 @@ export const api = {
     return `${BASE}/api/scans/${id}/report?format=${format}`;
   },
 
+  // A plain <a href> to this URL can't attach the X-API-Key header (browsers
+  // don't allow custom headers on a navigation/download), so when the API
+  // requires a key, a direct link always 401s. This fetches with the header
+  // instead and triggers the download from the resulting blob — the key
+  // never has to travel in the URL (visible in history/logs) to work around it.
+  async downloadReport(id: string, format: "json" | "html" | "md" | "pdf" | "sarif"): Promise<void> {
+    const res = await fetch(this.reportUrl(id, format), {
+      headers: API_KEY ? { "X-API-Key": API_KEY } : {},
+    });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = await res.json();
+        detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(res.status, detail);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : `vantis-${id.slice(0, 8)}.${format}`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
   // Build the ws:// URL for the live stream from the current origin (or the
   // configured API base).
   liveSocketUrl(id: string): string {

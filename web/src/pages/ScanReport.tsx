@@ -5,7 +5,7 @@ import { FindingDetail } from "../components/FindingDetail";
 import { SeverityChart } from "../components/SeverityChart";
 import { StatusBadge } from "../components/StatusBadge";
 import { useFindings, useScan } from "../hooks/useScans";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import { SEVERITY_ORDER, type Finding, type Severity } from "../api/types";
 import { SEVERITY_META } from "../components/severity";
 
@@ -20,6 +20,21 @@ export function ScanReport() {
   const [moduleFilter, setModuleFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Finding | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  async function handleDownload(fmt: "pdf" | "json" | "html" | "md" | "sarif") {
+    if (!id) return;
+    setDownloadError(null);
+    setDownloading(fmt);
+    try {
+      await api.downloadReport(id, fmt);
+    } catch (e) {
+      setDownloadError(e instanceof ApiError ? e.message : "Download failed");
+    } finally {
+      setDownloading(null);
+    }
+  }
 
   const modules = useMemo(() => Array.from(new Set(findings.map((f) => f.module))).sort(), [findings]);
 
@@ -65,16 +80,19 @@ export function ScanReport() {
         </div>
         <div className="flex gap-2">
           {(["pdf", "json", "html", "md", "sarif"] as const).map((fmt) => (
-            <a
+            <button
               key={fmt}
-              href={api.reportUrl(id, fmt)}
-              className="btn-ghost"
+              type="button"
+              disabled={downloading === fmt}
+              onClick={() => handleDownload(fmt)}
+              className="btn-ghost disabled:opacity-50"
             >
-              {fmt.toUpperCase()}
-            </a>
+              {downloading === fmt ? "…" : fmt.toUpperCase()}
+            </button>
           ))}
         </div>
       </div>
+      {downloadError && <p className="mt-2 text-right text-sm text-red-600">{downloadError}</p>}
 
       {/* Summary + chart */}
       {scan && (
