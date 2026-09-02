@@ -31,6 +31,10 @@ class ScanRow(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     target: Mapped[str] = mapped_column(String(512), nullable=False)
+    # Anonymous per-visitor id (see api/ownership.py) — no accounts, just scopes
+    # a scan to whichever browser created it. Nullable: rows created before this
+    # column existed have no owner and are simply invisible to every visitor.
+    owner_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # scope and modules are small lists — stored as comma-separated text to
     # keep the schema portable across SQLite/Postgres without a JSON column.
     scope: Mapped[str] = mapped_column(Text, default="")
@@ -66,6 +70,8 @@ class ScheduleRow(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     target: Mapped[str] = mapped_column(String(512), nullable=False)
+    # Same anonymous per-visitor id as ScanRow.owner_id — see api/ownership.py.
+    owner_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     scope: Mapped[str] = mapped_column(Text, default="")
     modules: Mapped[str] = mapped_column(Text, default="")
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from api.database import get_db
 from api.models import ScheduleRow, _utcnow
+from api.ownership import get_owner_id
 from api.security import require_api_key
 from api.schemas import ScheduleCreate, ScheduleOut, ScheduleUpdate
 
@@ -23,13 +24,23 @@ def _out(s: ScheduleRow) -> ScheduleOut:
     )
 
 
+def _get_schedule_or_404(db: Session, schedule_id: str, owner_id: str) -> ScheduleRow:
+    sched = db.scalar(select(ScheduleRow).where(
+        ScheduleRow.id == schedule_id, ScheduleRow.owner_id == owner_id))
+    if sched is None:
+        raise HTTPException(status_code=404, detail="schedule not found")
+    return sched
+
+
 @router.post("", response_model=ScheduleOut, status_code=201)
-def create_schedule(payload: ScheduleCreate, db: Session = Depends(get_db)) -> ScheduleOut:
+def create_schedule(
+    payload: ScheduleCreate, db: Session = Depends(get_db), owner_id: str = Depends(get_owner_id),
+) -> ScheduleOut:
     if not payload.authorized:
         raise HTTPException(status_code=400,
                             detail="Authorization required: set 'authorized': true to schedule recurring scans.")
     sched = ScheduleRow(
-        id=str(uuid.uuid4()), target=payload.target, scope=",".join(payload.scope),
+        id=str(uuid.uuid4()), target=payload.target, owner_id=owner_id, scope=",".join(payload.scope),
         modules=",".join(payload.modules), interval_minutes=payload.interval_minutes,
         enabled=True, authorized=True, next_run_at=_utcnow(),
     )
@@ -39,26 +50,29 @@ def create_schedule(payload: ScheduleCreate, db: Session = Depends(get_db)) -> S
 
 
 @router.get("", response_model=list[ScheduleOut])
-def list_schedules(db: Session = Depends(get_db)) -> list[ScheduleOut]:
-    rows = db.scalars(select(ScheduleRow).order_by(ScheduleRow.created_at.desc())).all()
+def list_schedules(db: Session = Depends(get_db), owner_id: str = Depends(get_owner_id)) -> list[ScheduleOut]:
+    rows = db.scalars(
+        select(ScheduleRow).where(ScheduleRow.owner_id == owner_id).order_by(ScheduleRow.created_at.desc())
+    ).all()
     return [_out(s) for s in rows]
 
 
 @router.patch("/{schedule_id}", response_model=ScheduleOut)
-def update_schedule(schedule_id: str, payload: ScheduleUpdate, db: Session = Depends(get_db)) -> ScheduleOut:
-    sched = db.get(ScheduleRow, schedule_id)
-    if sched is None:
-        raise HTTPException(status_code=404, detail="schedule not found")
+def update_schedule(
+    schedule_id: str, payload: ScheduleUpdate, db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
+) -> ScheduleOut:
+    sched = _get_schedule_or_404(db, schedule_id, owner_id)
     sched.enabled = payload.enabled
     db.commit()
     return _out(sched)
 
 
 @router.delete("/{schedule_id}", status_code=200)
-def delete_schedule(schedule_id: str, db: Session = Depends(get_db)) -> dict:
-    sched = db.get(ScheduleRow, schedule_id)
-    if sched is None:
-        raise HTTPException(status_code=404, detail="schedule not found")
+def delete_schedule(
+    schedule_id: str, db: Session = Depends(get_db), owner_id: str = Depends(get_owner_id),
+) -> dict:
+    sched = _get_schedule_or_404(db, schedule_id, owner_id)
     db.delete(sched)
     db.commit()
     return {"schedule_id": schedule_id, "action": "deleted"}

@@ -61,7 +61,7 @@ class Scheduler:
             for sched in due:
                 scan_id = str(uuid.uuid4())
                 db.add(ScanRow(
-                    id=scan_id, target=sched.target, scope=sched.scope,
+                    id=scan_id, target=sched.target, owner_id=sched.owner_id, scope=sched.scope,
                     modules=sched.modules, status=ScanStatus.QUEUED,
                 ))
                 sched.last_run_at = now

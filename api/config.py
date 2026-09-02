@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     webhook_url: str = ""
     webhook_min_severity: str = "high"
 
+    # Mark the anonymous per-visitor session cookie (see api/ownership.py) as
+    # Secure. Off by default so http://localhost dev/tests still work — the
+    # browser silently drops a Secure cookie set over plain HTTP, which would
+    # mint a brand new "visitor" on every request. Set true once deployed
+    # behind HTTPS (the only place this cookie actually needs to survive).
+    cookie_secure: bool = False
+
     # Scan engine defaults (mirrors the CLI defaults).
     http_timeout: float = 10.0
     rate_limit_delay: float = 0.3

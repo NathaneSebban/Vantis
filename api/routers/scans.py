@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from api.database import get_db
 from api.models import FindingRow, FindingStatus, ScanRow, ScanStatus
+from api.ownership import get_owner_id, owner_id_from_websocket_cookies
 from api.rate_limit import limiter
 from api.config import get_settings
 from api.scan_runner import scan_manager
@@ -69,8 +70,10 @@ def _summary(db: Session, scan: ScanRow) -> ScanSummary:
     )
 
 
-def _get_scan_or_404(db: Session, scan_id: str) -> ScanRow:
-    scan = db.get(ScanRow, scan_id)
+def _get_scan_or_404(db: Session, scan_id: str, owner_id: str) -> ScanRow:
+    """Scoped to owner_id: a scan belonging to someone else's session 404s
+    exactly like one that doesn't exist, so its existence isn't leaked either."""
+    scan = db.scalar(select(ScanRow).where(ScanRow.id == scan_id, ScanRow.owner_id == owner_id))
     if scan is None:
         raise HTTPException(status_code=404, detail="scan not found")
     return scan
@@ -80,6 +83,7 @@ def _get_scan_or_404(db: Session, scan_id: str) -> ScanRow:
 
 def _queue_scan(
     db: Session, target: str, scope: list[str], modules: list[str], *,
+    owner_id: str,
     module_names: list[str] | None, browser_crawl: bool,
     headers: dict, cookies: dict, secondary_headers: dict, secondary_cookies: dict,
     login_url: str | None, login_username: str | None, login_password: str | None,
@@ -89,7 +93,8 @@ def _queue_scan(
     to the runner in-memory only and never stored."""
     scan_id = str(uuid.uuid4())
     scan = ScanRow(
-        id=scan_id, target=target, scope=",".join(scope), modules=",".join(modules),
+        id=scan_id, target=target, owner_id=owner_id,
+        scope=",".join(scope), modules=",".join(modules),
         status=ScanStatus.QUEUED,
     )
     db.add(scan)
@@ -109,7 +114,10 @@ def _queue_scan(
 
 @router.post("", response_model=ScanCreatedResponse, status_code=202, dependencies=[Depends(require_api_key)])
 @limiter.limit(get_settings().scan_rate_limit)
-def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get_db)) -> ScanCreatedResponse:
+def create_scan(
+    request: Request, payload: ScanCreate, db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
+) -> ScanCreatedResponse:
     """Queue a scan. The ``authorized`` flag is the web equivalent of the
     CLI's interactive authorization gate — false/absent is a hard 400."""
     if not payload.authorized:
@@ -122,7 +130,7 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
         )
 
     return _queue_scan(
-        db, payload.target, payload.scope, payload.modules,
+        db, payload.target, payload.scope, payload.modules, owner_id=owner_id,
         module_names=payload.module_names, browser_crawl=payload.browser_crawl,
         headers=payload.headers, cookies=payload.cookies,
         secondary_headers=payload.secondary_headers, secondary_cookies=payload.secondary_cookies,
@@ -133,7 +141,10 @@ def create_scan(request: Request, payload: ScanCreate, db: Session = Depends(get
 @router.post("/batch", response_model=BatchScanCreatedResponse, status_code=202,
              dependencies=[Depends(require_api_key)])
 @limiter.limit(get_settings().scan_rate_limit)
-def create_batch_scan(request: Request, payload: BatchScanCreate, db: Session = Depends(get_db)) -> BatchScanCreatedResponse:
+def create_batch_scan(
+    request: Request, payload: BatchScanCreate, db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
+) -> BatchScanCreatedResponse:
     """Queue one independent scan per target in ``payload.targets``, sharing
     every other option. One authorization confirmation covers the whole
     batch, matching the CLI's --target a,b,c behaviour."""
@@ -148,7 +159,7 @@ def create_batch_scan(request: Request, payload: BatchScanCreate, db: Session = 
 
     scans = [
         _queue_scan(
-            db, target, payload.scope, payload.modules,
+            db, target, payload.scope, payload.modules, owner_id=owner_id,
             module_names=payload.module_names, browser_crawl=payload.browser_crawl,
             headers=payload.headers, cookies=payload.cookies,
             secondary_headers=payload.secondary_headers, secondary_cookies=payload.secondary_cookies,
@@ -162,12 +173,16 @@ def create_batch_scan(request: Request, payload: BatchScanCreate, db: Session = 
 @router.get("", response_model=ScanListResponse, dependencies=[Depends(require_api_key)])
 def list_scans(
     db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> ScanListResponse:
-    total = db.scalar(select(func.count()).select_from(ScanRow)) or 0
+    total = db.scalar(
+        select(func.count()).select_from(ScanRow).where(ScanRow.owner_id == owner_id)
+    ) or 0
     scans = db.scalars(
-        select(ScanRow).order_by(ScanRow.created_at.desc()).limit(limit).offset(offset)
+        select(ScanRow).where(ScanRow.owner_id == owner_id)
+        .order_by(ScanRow.created_at.desc()).limit(limit).offset(offset)
     ).all()
     return ScanListResponse(
         total=total,
@@ -182,13 +197,15 @@ def target_trend(
     target: str = Query(..., description="Exact target string as scanned, e.g. https://example.com"),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
 ) -> TrendResponse:
     """Findings-over-time for one target: severity counts for every completed
     scan of it, oldest first, so a client can plot a trend line. Registered
     before /{scan_id} so 'trend' is never swallowed as a scan id."""
     scans = db.scalars(
         select(ScanRow)
-        .where(ScanRow.target == target, ScanRow.status == ScanStatus.COMPLETED)
+        .where(ScanRow.target == target, ScanRow.status == ScanStatus.COMPLETED,
+               ScanRow.owner_id == owner_id)
         .order_by(ScanRow.created_at.asc())
         .limit(limit)
     ).all()
@@ -203,8 +220,10 @@ def target_trend(
 
 
 @router.get("/{scan_id}", response_model=ScanDetail, dependencies=[Depends(require_api_key)])
-def get_scan(scan_id: str, db: Session = Depends(get_db)) -> ScanDetail:
-    scan = _get_scan_or_404(db, scan_id)
+def get_scan(
+    scan_id: str, db: Session = Depends(get_db), owner_id: str = Depends(get_owner_id),
+) -> ScanDetail:
+    scan = _get_scan_or_404(db, scan_id, owner_id)
     summary = _summary(db, scan)
     return ScanDetail(
         **summary.model_dump(),
@@ -219,11 +238,12 @@ def get_scan(scan_id: str, db: Session = Depends(get_db)) -> ScanDetail:
 def get_findings(
     scan_id: str,
     db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
     severity: str | None = Query(None, description="Comma-separated: e.g. high,critical"),
     module: str | None = Query(None, description="Comma-separated module names: e.g. reflected-xss"),
     status: str | None = Query(None, description="Comma-separated: open,false_positive,confirmed"),
 ) -> list[FindingOut]:
-    _get_scan_or_404(db, scan_id)
+    _get_scan_or_404(db, scan_id, owner_id)
     stmt = select(FindingRow).where(FindingRow.scan_id == scan_id)
 
     if severity:
@@ -249,8 +269,10 @@ def get_findings(
               dependencies=[Depends(require_api_key)])
 def update_finding_status(
     scan_id: str, finding_id: int, payload: FindingStatusUpdate, db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
 ) -> FindingOut:
     """Triage a finding (mark false_positive / confirmed / reopen)."""
+    _get_scan_or_404(db, scan_id, owner_id)
     row = db.scalar(select(FindingRow).where(
         FindingRow.id == finding_id, FindingRow.scan_id == scan_id))
     if row is None:
@@ -264,12 +286,13 @@ def update_finding_status(
 def diff_scans(
     scan_id: str, against: str = Query(..., description="Scan id to compare against (usually older)"),
     db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
 ) -> ScanDiff:
     """Compare two scans by finding identity (module|title|location): what's new
     in this scan vs `against`, what was fixed, and how many are unchanged.
     False-positive findings are excluded from the comparison."""
-    _get_scan_or_404(db, scan_id)
-    _get_scan_or_404(db, against)
+    _get_scan_or_404(db, scan_id, owner_id)
+    _get_scan_or_404(db, against, owner_id)
 
     def load(sid: str) -> dict[str, FindingRow]:
         rows = db.scalars(select(FindingRow).where(
@@ -292,11 +315,12 @@ def diff_scans(
 def get_report(
     scan_id: str,
     db: Session = Depends(get_db),
+    owner_id: str = Depends(get_owner_id),
     format: str = Query("json", pattern="^(json|html|md|pdf|sarif)$"),
 ) -> Response:
     """Rebuild a library Report from persisted findings and reuse the existing
     exporters so downloads match exactly what the CLI produces."""
-    scan = _get_scan_or_404(db, scan_id)
+    scan = _get_scan_or_404(db, scan_id, owner_id)
 
     report = Report(target=scan.target)
     if scan.started_at:
@@ -346,9 +370,11 @@ def get_report(
 
 
 @router.delete("/{scan_id}", status_code=200, dependencies=[Depends(require_api_key)])
-def delete_scan(scan_id: str, db: Session = Depends(get_db)) -> dict:
+def delete_scan(
+    scan_id: str, db: Session = Depends(get_db), owner_id: str = Depends(get_owner_id),
+) -> dict:
     """Cancel a running scan if possible; otherwise delete its history."""
-    scan = _get_scan_or_404(db, scan_id)
+    scan = _get_scan_or_404(db, scan_id, owner_id)
 
     if scan.status in {ScanStatus.QUEUED, ScanStatus.RUNNING} and scan_manager.request_cancel(scan_id):
         return {"scan_id": scan_id, "action": "cancellation_requested"}
@@ -359,7 +385,7 @@ def delete_scan(scan_id: str, db: Session = Depends(get_db)) -> dict:
 
 
 @router.websocket("/{scan_id}/live")
-async def scan_live(websocket: WebSocket, scan_id: str) -> None:
+async def scan_live(websocket: WebSocket, scan_id: str, db: Session = Depends(get_db)) -> None:
     """Stream scan events (status changes, findings, module progress) live.
 
     The socket stays open until the client disconnects; the scan thread pushes
@@ -367,6 +393,11 @@ async def scan_live(websocket: WebSocket, scan_id: str) -> None:
     # Auth (when enabled) happens before accept() — an unauthorized handshake is
     # closed without ever joining the broadcast set.
     if not await websocket_authorized(websocket):
+        return
+    owner_id = owner_id_from_websocket_cookies(websocket.cookies)
+    scan = db.scalar(select(ScanRow).where(ScanRow.id == scan_id))
+    if scan is None or scan.owner_id != owner_id:
+        await websocket.close(code=4004)
         return
     await ws_manager.connect(scan_id, websocket)
     try:
